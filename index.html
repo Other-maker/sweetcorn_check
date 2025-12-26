@@ -1,0 +1,2423 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cob Corn - POS System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #e63946, #f1faee); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 24px; font-weight: bold; }
+        .header-info { display: flex; gap: 20px; font-size: 14px; align-items: center; }
+        .sync-status { font-size: 11px; padding: 4px 8px; border-radius: 999px; background:#ffffff22; border:1px solid #ffffff55; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .tabs { display: flex; background: white; border-bottom: 2px solid #ddd; gap: 0; margin-bottom: 20px; border-radius: 8px 8px 0 0; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; background: white; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #666; white-space: nowrap; transition: all 0.3s; }
+        .tab-btn:hover { background: #f8f9fa; }
+        .tab-btn.active { border-bottom-color: #e63946; color: #e63946; background: white; font-weight: bold; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .billing-grid { display: grid; grid-template-columns: 1fr 1fr 350px; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 2px solid #e63946; padding-bottom: 10px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 12px; color: #333; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #e63946; box-shadow: 0 0 5px rgba(230, 57, 70, 0.3); }
+        .quick-items { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+        .quick-item { background: #f8f9fa; border: 2px solid #ddd; padding: 12px; border-radius: 5px; cursor: pointer; text-align: center; transition: all 0.3s; font-size: 13px; }
+        .quick-item:hover { background: #e8f4f8; border-color: #e63946; transform: translateY(-2px); }
+        .quick-item-name { font-weight: 600; margin-bottom: 5px; }
+        .quick-item-price { color: #e63946; font-weight: bold; font-size: 14px; }
+        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: #e63946; color: white; width: 100%; margin-bottom: 5px; }
+        .btn-primary:hover { background: #d62828; }
+        .btn-success { background: #06a77d; color: white; }
+        .btn-danger { background: #d32f2f; color: white; }
+        .payment-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .payment-option { display: none; }
+        .payment-label { display: block; padding: 12px; border: 2px solid #ddd; border-radius: 5px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .payment-option:checked + .payment-label { background: #e63946; color: white; border-color: #e63946; }
+        .payment-received-btn { display: block; padding: 14px; border: 2px solid #ddd; border-radius: 5px; text-align: center; cursor: pointer; transition: all 0.3s; background: white; color: #666; font-weight: 600; font-size: 15px; width: 100%; }
+        .payment-received-btn.active { background: #06a77d; color: white; border-color: #06a77d; }
+        .summary-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .summary-row.total { border-top: 2px solid #ddd; padding-top: 8px; font-size: 16px; font-weight: bold; }
+        .order-items { max-height: 300px; overflow-y: auto; margin-bottom: 15px; }
+        .empty-state { text-align: center; color: #999; padding: 40px 0; }
+        .pending-orders-inline { max-height: 400px; overflow-y: auto; margin-top: 10px; }
+        .inventory-display { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; }
+        .inventory-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #06a77d; }
+        .stock-ok { background: #d4edda; color: #155724; }
+        .stock-alert { background: #f8d7da; color: #721c24; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th { background: #f8f9fa; padding: 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .eod-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .eod-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .eod-stat { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #e63946; }
+        .eod-stat-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .eod-stat-value { font-size: 24px; font-weight: bold; color: #333; }
+        .report-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .report-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #e63946; }
+        .report-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .report-value { font-size: 28px; font-weight: bold; color: #333; }
+        .report-subvalue { font-size: 12px; color: #999; margin-top: 5px; }
+        @media (max-width: 1024px) { .billing-grid { grid-template-columns: 1fr 1fr; } .eod-grid, .report-cards { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .billing-grid { grid-template-columns: 1fr; } .quick-items { grid-template-columns: 1fr; } .eod-grid, .report-cards { grid-template-columns: 1fr; } }
+        @media print { body * { visibility: hidden; } .print-bill, .print-bill * { visibility: visible; } .print-bill { position: absolute; left: 0; top: 0; width: 80mm; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🌽 Cob Corn POS</div>
+        <div class="header-info">
+            <div>Today: <span id="todayDate"></span></div>
+            <div id="currentTime"></div>
+            <div>💵 Cash: ₹<span id="todayCash">0</span></div>
+            <div id="syncStatus" class="sync-status">Sync: Checking…</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="billing" onclick="switchTab(event, 'billing')">📋 New Order</button>
+            <button class="tab-btn" data-tab="inventory" onclick="switchTab(event, 'inventory')">📊 Inventory</button>
+            <button class="tab-btn" data-tab="reconciliation" onclick="switchTab(event, 'reconciliation')">🔄 End-of-Day</button>
+            <button class="tab-btn" data-tab="reports" onclick="switchTab(event, 'reports')">📈 Reports</button>
+            <button class="tab-btn" data-tab="expenses" onclick="switchTab(event, 'expenses')">💰 Expenses</button>
+            <button class="tab-btn" data-tab="settings" onclick="switchTab(event, 'settings')">⚙️ Settings</button>
+        </div>
+
+        <!-- NEW ORDER TAB -->
+        <div id="billing" class="tab-content active">
+            <div class="billing-grid">
+                <div class="card">
+                    <div class="card-header">Customer Order Entry</div>
+                    <label>Quick Add Items</label>
+                    <div class="quick-items" id="quickItems"></div>
+                    <div class="form-group">
+                        <label>Select Item</label>
+                        <select id="itemSelect" onchange="addItemToOrder()">
+                            <option>-- Select Item --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="quantity" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Customer Name (Optional)</label>
+                        <input type="text" id="customerName" placeholder="e.g., John">
+                    </div>
+                    <div class="form-group">
+                        <label>Special Notes</label>
+                        <textarea id="specialNotes" rows="3" placeholder="e.g., Extra spice"></textarea>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Payment & Status</div>
+                    <label>Payment Method</label>
+                    <div class="payment-methods">
+                        <div>
+                            <input type="radio" name="payment" id="upi" class="payment-option" value="upi" checked>
+                            <label for="upi" class="payment-label">📱 UPI/Digital</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="payment" id="cash" class="payment-option" value="cash">
+                            <label for="cash" class="payment-label">💵 Cash</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="amount" readonly value="0" step="0.01">
+                    </div>
+                    <label>Payment Status</label>
+                    <button class="payment-received-btn" id="paymentReceivedBtn" onclick="togglePaymentReceivedAndSave()">⏱ Payment Received</button>
+                    <button class="btn btn-success" onclick="printBill()" style="background:#06a77d; width:100%; margin-bottom:5px;">🖨️ Print Bill</button>
+                    <button class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd; width:100%;" onclick="resetForm()">🔄 Clear Form</button>
+                    <div style="margin-top: 20px;">
+                        <div class="card-header" style="margin-bottom: 10px;">📋 Pending Orders</div>
+                        <div class="pending-orders-inline" id="pendingOrdersInline">
+                            <div class="empty-state" style="padding: 20px 0; font-size: 12px;">📭 No pending</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Order Summary</div>
+                    <div class="order-items" id="orderItems">
+                        <div class="empty-state">📝 No items</div>
+                    </div>
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span>₹<span id="subtotal">0</span></span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tax:</span>
+                            <span>₹<span id="tax">0</span></span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>TOTAL:</span>
+                            <span>₹<span id="totalAmount">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INVENTORY TAB -->
+        <div id="inventory" class="tab-content">
+            <div id="inventorySummary" class="card" style="margin-bottom:15px; display:none;">
+                <div class="card-header">Inventory Summary (Today)</div>
+                <div id="inventorySummaryList" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:8px; font-size:13px; color:#333;"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">📊 Inventory Management</div>
+                <p style="margin-bottom: 15px; color: #666; font-size: 13px;"><strong>Auto-deduction:</strong> Inventory reduces when orders FULFILLED.</p>
+                <button class="btn btn-success" onclick="addInventoryItem()" style="margin-bottom:15px; max-width:300px;">➕ Add New Inventory Item</button>
+                <div class="inventory-display" id="inventoryDisplay"></div>
+            </div>
+        </div>
+
+        <!-- END-OF-DAY TAB -->
+        <div id="reconciliation" class="tab-content">
+            <div class="card-header" style="margin-bottom: 20px;">🔄 End-of-Day Reconciliation</div>
+            <div class="eod-card">
+                <h3 style="margin-bottom: 15px;">Financial Reconciliation</h3>
+                <div class="eod-grid">
+                    <div class="eod-stat">
+                        <div class="eod-stat-label">System Total</div>
+                        <div class="eod-stat-value">₹<span id="eodSystemTotal">0</span></div>
+                    </div>
+                    <div class="eod-stat">
+                        <div class="eod-stat-label">Total Cash Sales</div>
+                        <div class="eod-stat-value">₹<span id="eodCashSales">0</span></div>
+                    </div>
+                    <div class="eod-stat">
+                        <div class="eod-stat-label">Total Online Sales</div>
+                        <div class="eod-stat-value">₹<span id="eodOnlineSales">0</span></div>
+                    </div>
+                    <div class="eod-stat" style="border-left-color: #06a77d;">
+                        <div class="eod-stat-label">Actual Cash in Hand</div>
+                        <input type="number" id="eodActualCash" placeholder="Enter actual" oninput="calculateEODCashVariance()" style="width:100%; padding:8px; font-size:18px; font-weight:bold; border:2px solid #ddd; border-radius:5px; margin-top:5px;">
+                        <div style="margin-top:5px; font-size:13px;">Variance: <span id="eodCashVariance" style="font-weight:bold;">₹0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="eod-card">
+                <h3 style="margin-bottom: 15px;">Physical Inventory vs System</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Opening</th>
+                            <th>Purchased</th>
+                            <th>Used</th>
+                            <th>Expected Closing</th>
+                            <th>Actual Closing</th>
+                            <th>Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eodInventoryTable"></tbody>
+                </table>
+                <button class="btn btn-primary" onclick="calculateEODInventoryVariance()" style="margin-top:15px; max-width:300px;">Calculate Inventory Variance</button>
+            </div>
+
+            <div class="eod-card">
+                <h3 style="margin-bottom: 15px;">Sales Unit Reconciliation</h3>
+                <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <h4 style="margin-bottom:10px;">Cups Sold (Sweet Corn):</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; align-items:end;">
+                        <div>
+                            <label style="font-size:12px; color:#666;">System Count</label>
+                            <div style="font-size:24px; font-weight:bold;" id="eodCupsSystem">0</div>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666;">Physical Books Count</label>
+                            <input type="number" id="eodCupsPhysical" placeholder="Enter actual" oninput="calculateEODCupsVariance()" style="width:100%; padding:10px; font-size:16px; border:2px solid #ddd; border-radius:5px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666;">Variance</label>
+                            <div style="font-size:24px; font-weight:bold; color:#e63946;" id="eodCupsVariance">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:#f8f9fa; padding:15px; border-radius:8px;">
+                    <h4 style="margin-bottom:10px;">Plates Sold (Nachos):</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; align-items:end;">
+                        <div>
+                            <label style="font-size:12px; color:#666;">System Count</label>
+                            <div style="font-size:24px; font-weight:bold;" id="eodPlatesSystem">0</div>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666;">Physical Books Count</label>
+                            <input type="number" id="eodPlatesPhysical" placeholder="Enter actual" oninput="calculateEODPlatesVariance()" style="width:100%; padding:10px; font-size:16px; border:2px solid #ddd; border-radius:5px;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:#666;">Variance</label>
+                            <div style="font-size:24px; font-weight:bold; color:#e63946;" id="eodPlatesVariance">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+                <button class="btn btn-primary" onclick="finalizeEOD()" style="padding:15px; font-size:16px;">✓ Finalize & Save to Sheets</button>
+                <button class="btn" style="background:#2196F3; color:white; padding:15px; font-size:16px;" onclick="alert('Download feature coming soon')">📥 Download Report</button>
+            </div>
+        </div>
+
+        <!-- REPORTS TAB -->
+        <div id="reports" class="tab-content">
+            <div class="card">
+                <div class="card-header">📈 Sales Reports</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div>
+                        <label>Report Period</label>
+                        <select id="reportPeriod" onchange="updateReports()" style="padding:10px;">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Comparison</label>
+                        <select style="padding:10px;">
+                            <option>Week-on-Week</option>
+                            <option>Month-on-Month</option>
+                            <option>Year-on-Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="report-cards">
+                    <div class="report-card">
+                        <div class="report-label">Total Sales Today</div>
+                        <div class="report-value">₹<span id="reportTotalSales">0.00</span></div>
+                        <div class="report-subvalue"><span id="reportOrdersCount">0</span> Orders</div>
+                    </div>
+                    <div class="report-card" style="border-left-color:#06a77d;">
+                        <div class="report-label">Cash Transactions</div>
+                        <div class="report-value">₹<span id="reportCashTotal">0.00</span></div>
+                        <div class="report-subvalue"><span id="reportCashCount">0</span> Orders</div>
+                    </div>
+                    <div class="report-card" style="border-left-color:#2196F3;">
+                        <div class="report-label">Online Transactions</div>
+                        <div class="report-value">₹<span id="reportOnlineTotal">0.00</span></div>
+                        <div class="report-subvalue"><span id="reportOnlineCount">0</span> Orders</div>
+                    </div>
+                    <div class="report-card" style="border-left-color:#ff9800;">
+                        <div class="report-label">Average Order Value</div>
+                        <div class="report-value">₹<span id="reportAvgOrder">0.00</span></div>
+                        <div class="report-subvalue">Per Transaction</div>
+                    </div>
+                </div>
+
+                <h3 style="margin:20px 0 15px 0;">Item-wise Sales</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty Sold</th>
+                            <th>Revenue</th>
+                            <th>Avg Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemSalesTable">
+                        <tr><td colspan="4" style="text-align:center; color:#999;">No sales data</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- EXPENSES TAB -->
+        <div id="expenses" class="tab-content">
+            <div class="billing-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="card">
+                    <div class="card-header">💰 Record Expense</div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="expenseDate" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="expenseCategory">
+                            <option value="">-- Select Category --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="expenseDescription" rows="2" placeholder="Brief description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="expenseAmount" placeholder="0.00" step="0.01">
+                    </div>
+                    <label>Payment Method</label>
+                    <div class="payment-methods">
+                        <div>
+                            <input type="radio" name="expensePayment" id="expenseCash" class="payment-option" value="cash" checked>
+                            <label for="expenseCash" class="payment-label">💵 Cash</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="expensePayment" id="expenseOnline" class="payment-option" value="online">
+                            <label for="expenseOnline" class="payment-label">📱 Online</label>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveExpense()">💾 Save Expense</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Manage Categories</div>
+                    <button class="btn btn-success" onclick="addExpenseCategory()" style="margin-bottom:15px;">+ Add New Category</button>
+                    <div id="expenseCategoriesList" style="margin-bottom:20px;"></div>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="card-header" style="margin-top:0;">Recent Expenses</div>
+                    <div style="max-height:400px; overflow-y:auto;">
+                        <table style="font-size:12px;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentExpenses"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="settings" class="tab-content">
+            <div class="billing-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="card">
+                    <div class="card-header">Add Menu Item</div>
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" id="newItemName" placeholder="e.g., Peri Peri Sweet Corn">
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₹)</label>
+                        <input type="number" id="newItemPrice" step="0.01" placeholder="e.g., 60">
+                    </div>
+                    <div class="form-group">
+                        <label>Link to Inventory Item</label>
+                        <select id="newItemInventoryId">
+                            <option value="sweet-corn">Sweet Corn</option>
+                            <option value="nachos">Nachos</option>
+                            <option value="cups">Cups</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Consumption Per Unit (grams or pieces)</label>
+                        <input type="number" id="newItemConsumption" placeholder="e.g., 150" step="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addMenuItem()">+ Add Menu Item</button>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="card-header" style="margin-top: 0;">Current Menu</div>
+                    <div id="menuList"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Manage Inventory Items</div>
+                    <button class="btn btn-success" onclick="addInventoryItem()" style="margin-bottom:15px;">+ Add New Inventory Item</button>
+                    <div id="inventoryItemsList" style="margin-bottom:20px;"></div>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="card-header" style="margin-top:0;">Google Sheets Integration</div>
+                    <div class="form-group">
+                        <label>Google Apps Script URL</label>
+                        <input type="text" id="googleURL" placeholder="https://script.google.com/...">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveGoogleURL()">Save URL</button>
+                    <button class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd; width:100%; margin-top:5px;" onclick="testGoogleConnection()">Test Connection</button>
+                    
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="card-header" style="margin-top:0;">☁️ Remote Menu & Inventory Sync (GitHub/Vercel)</div>
+                    <p style="font-size:12px; color:#666; margin-bottom:10px;">Enter a URL to fetch/sync menu items and inventory from a central backend. Changes made in the UI will be pushed here for all users.</p>
+                    <div class="form-group">
+                        <label>Remote Config API URL</label>
+                        <input type="text" id="remoteConfigURL" placeholder="https://your-backend.com/api/config or https://raw.githubusercontent.com/.../config.json">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveRemoteConfigURL()">Save Config URL</button>
+                    <button class="btn" style="background:#f8f9fa; color:#333; border:1px solid #ddd; width:100%; margin-top:5px;" onclick="testRemoteConnection()">Test Connection</button>
+                    
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <h3>💾 Offline & Sync</h3>
+                        <button onclick="syncPendingToGoogle()" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">🔄 Sync Now (Upload Pending Data)</button>
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">All data is saved locally. Click above to sync with Google Sheets.</p>
+                    </div>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="card-header" style="margin-top:0;">Print Bill Settings</div>
+                    <div class="form-group">
+                        <label>Business Name</label>
+                        <input type="text" id="billBusinessName" placeholder="COB CORN">
+                    </div>
+                    <div class="form-group">
+                        <label>Address Line 1</label>
+                        <input type="text" id="billAddress1" placeholder="Kharadi">
+                    </div>
+                    <div class="form-group">
+                        <label>Address Line 2</label>
+                        <input type="text" id="billAddress2" placeholder="Pune-411014">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" id="billPhone" placeholder="+91-9876543210">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBillFormat()">Save Bill Format</button>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="form-group">
+                        <label><strong>Export Data</strong></label>
+                        <button class="btn btn-primary" onclick="exportToCSV()" style="background:#06a77d;">📥 Export as CSV</button>
+                    </div>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+                    <div class="form-group">
+                        <label><strong>⚠️ Clear Data</strong></label>
+                        <button class="btn btn-danger" onclick="clearTodayOrders()" style="width:100%;">Clear Today's Orders</button>
+                        <button class="btn btn-danger" onclick="clearAllData()" style="width:100%; margin-top:5px;">Clear ALL Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="printArea" class="hidden"></div>
+
+    <script>
+// CONFIGURATION
+const CONFIG = {
+    googleAppsScriptURL: "",
+    autoSyncEnabled: true,
+    billFormat: {
+        businessName: 'COB CORN',
+        address1: 'Kharadi',
+        address2: 'Pune-411014',
+        phone: '+91-9876543210'
+    },
+    masterPassword: '5836',
+    isAuthenticated: false
+};
+
+// STORAGE MANAGER - OFFLINE SUPPORT
+const StorageManager = {
+    init() {
+        if (!localStorage.getItem('posData')) {
+            localStorage.setItem('posData', JSON.stringify({
+                orders: [],
+                inventory: {},
+                expenses: [],
+                lastSyncTime: null,
+                pendingSync: {
+                    orders: [],
+                    expenses: [],
+                    eodRecords: [],
+                    reconciliation: []
+                }
+            }));
+        }
+    },
+
+    getData() {
+        const data = localStorage.getItem('posData');
+        return data ? JSON.parse(data) : null;
+    },
+
+    saveData(data) {
+        localStorage.setItem('posData', JSON.stringify(data));
+    },
+
+    addToPending(type, item) {
+        const data = this.getData();
+        if (data.pendingSync[type]) {
+            data.pendingSync[type].push(item);
+            this.saveData(data);
+            console.log('📝 Added to pending queue:', type, item);
+        }
+    },
+
+    markSynced(type, index) {
+        const data = this.getData();
+        if (data.pendingSync[type]) {
+            data.pendingSync[type].splice(index, 1);
+            this.saveData(data);
+            console.log('✅ Marked as synced:', type);
+        }
+    }
+};
+
+StorageManager.init();
+
+// SYNC STATUS UI
+let lastSyncTime = null;
+
+function updateSyncStatus() {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    if (!navigator.onLine) {
+        el.textContent = 'Sync: Offline 🔴';
+        el.style.background = '#ffebee';
+        el.style.color = '#c62828';
+    } else {
+        const now = new Date();
+        el.textContent = 'Sync: Online 🟢';
+        el.style.background = '#e8f5e9';
+        el.style.color = '#2e7d32';
+        lastSyncTime = now;
+    }
+}
+
+window.addEventListener('online', () => {
+    updateSyncStatus();
+    showMessage('Back online – syncing pending data…', 'info');
+    syncPendingToGoogle();
+    fetchOrdersFromGoogle();
+    initializeRemoteConfig();
+});
+window.addEventListener('offline', updateSyncStatus);
+
+// SYNC FUNCTION (Orders + Inventory Reconciliation)
+async function syncPendingToGoogle() {
+    console.log('🔄 Starting sync of pending data...');
+
+    if (!CONFIG.googleAppsScriptURL) {
+        console.error('❌ Google Apps Script URL not configured');
+        showMessage('❌ Google URL not configured', 'error');
+        return;
+    }
+
+    const data = StorageManager.getData();
+    let orderSynced = 0;
+    let reconSynced = 0;
+
+    try {
+        // 1. Pending ORDERS -> Orders sheet
+        const pendingOrders = data.pendingSync.orders || [];
+        for (let i = 0; i < pendingOrders.length; i++) {
+            const order = pendingOrders[i];
+            try {
+                // use CORS (requires the Apps Script endpoint to send Access-Control-Allow-Origin)
+                // avoid custom headers to prevent OPTIONS preflight — send plain text JSON body
+                const resOrder = await fetch(CONFIG.googleAppsScriptURL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    body: JSON.stringify({ action: 'saveOrder', order: order })
+                });
+
+                if (!resOrder.ok) {
+                    console.error('❌ Failed to sync order - server returned', resOrder.status);
+                    break;
+                }
+                StorageManager.markSynced('orders', 0);
+                orderSynced++;
+                console.log('✅ Synced order:', order.orderNumber);
+            } catch (err) {
+                console.error('❌ Failed to sync order:', order.orderNumber, err);
+                break;
+            }
+        }
+
+        // 2. Pending INVENTORY RECONCILIATION -> Inventory Reconciliation sheet
+        const pendingRecon = data.pendingSync.reconciliation || [];
+        for (let i = 0; i < pendingRecon.length; i++) {
+            const row = pendingRecon[i];
+            try {
+                // If this is a full snapshot (bulk), send it as one request using the snapshot endpoint
+                if (row && row.items && Array.isArray(row.items)) {
+                    const resSnap = await fetch(CONFIG.googleAppsScriptURL, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: JSON.stringify({ action: 'saveInventoryVarianceSnapshot', snapshotData: row })
+                    });
+
+                    if (!resSnap.ok) {
+                        console.error('❌ Failed to sync inventory snapshot - server returned', resSnap.status);
+                        break;
+                    }
+                    StorageManager.markSynced('reconciliation', 0);
+                    reconSynced++;
+                    console.log('✅ Synced inventory snapshot for date:', row.date || '(no-date)');
+                } else {
+                    // legacy single-row reconciliation -> keep calling saveReconciliation
+                    const resRecon = await fetch(CONFIG.googleAppsScriptURL, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: JSON.stringify({ action: 'saveReconciliation', reconData: row })
+                    });
+
+                    if (!resRecon.ok) {
+                        console.error('❌ Failed to sync reconciliation - server returned', resRecon.status);
+                        break;
+                    }
+                    StorageManager.markSynced('reconciliation', 0);
+                    reconSynced++;
+                    console.log('✅ Synced reconciliation row for:', row.itemName || row.item || '(unknown)');
+                }
+            } catch (err) {
+                console.error('❌ Failed to sync reconciliation row/snapshot:', err);
+                break;
+            }
+        }
+
+        if (orderSynced + reconSynced > 0) {
+            showMessage(`✅ Synced ${orderSynced} orders & ${reconSynced} reconciliation rows`, 'success');
+        } else {
+            showMessage('✅ Already synced – no pending data', 'info');
+        }
+    } catch (error) {
+        console.error('❌ Sync error:', error);
+        showMessage('❌ Sync error: ' + error.message, 'error');
+    }
+
+} // <-- close syncPendingToGoogle
+
+    // ✅ STANDALONE GLOBAL FUNCTION - Syncs single order to Google Sheets
+async function syncOrderToGoogle(order) {
+    // 'isOnline' was not defined — use navigator.onLine which is the standard browser API
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        console.log('📝 Order saved locally (offline or no URL)', order.orderNumber);
+        return false;
+    }
+
+    try {
+        console.log('🚀 Syncing order to Google Sheets:', order.orderNumber);
+        
+        // send as plain JSON body without custom header to avoid OPTIONS preflight
+        const res = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify({ 
+                action: 'saveOrder', 
+                order: {
+                    orderNumber: order.orderNumber,
+                    date: order.date,
+                    time: order.time || new Date().toLocaleTimeString('en-IN'),
+                    customerName: order.customerName || 'Walk-in',
+                    items: order.items || [],
+                    total: order.total,
+                    paymentMethod: order.paymentMethod,
+                    status: order.status || 'fulfilled'
+                },
+                timestamp: new Date().toISOString()
+            })
+        });
+
+        if (!res.ok) {
+            console.error('❌ Order sync failed (status):', res.status);
+            return false;
+        }
+
+        console.log('✅ Order synced to Google Sheets:', order.orderNumber);
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to sync order:', error);
+        return false;
+    }
+}
+
+// AUTO-SYNC INITIAL + CONTINUOUS POLLING
+let autoSyncInterval = null;
+let autoRefreshInterval = null;
+
+function startAutoSync() {
+    // Auto-sync pending data every 30 seconds
+    autoSyncInterval = setInterval(() => {
+        if (navigator.onLine && CONFIG.googleAppsScriptURL) {
+            syncPendingToGoogle();
+        }
+    }, 30000); // 30 seconds
+    
+    // Auto-refresh menu & inventory from remote backend every 2 minutes (all users get same data)
+    autoRefreshInterval = setInterval(() => {
+        if (navigator.onLine && RemoteConfigManager.googleSheetsURL) {
+            initializeRemoteConfig();
+        }
+    }, 120000); // 2 minutes
+    
+    // ✅ Auto-fetch orders from Google Sheets every 15 seconds (all users see same orders)
+    setInterval(() => {
+        if (navigator.onLine && CONFIG.googleAppsScriptURL) {
+            fetchOrdersFromGoogle();
+        }
+    }, 15000); // 15 seconds
+}
+
+function stopAutoSync() {
+    if (autoSyncInterval) clearInterval(autoSyncInterval);
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+}
+
+window.addEventListener('load', () => {
+    updateSyncStatus();
+    setTimeout(syncPendingToGoogle, 2000);
+    startAutoSync(); // ✅ Start continuous auto-sync
+});
+
+// REMOTE CONFIG MANAGER - Syncs menu/inventory with backend (can be Vercel or Google Sheets)
+const RemoteConfigManager = {
+    remoteURL: '', // Set this in Settings tab (can be GitHub raw URL or your API endpoint)
+    googleSheetsURL: '', // Alternative: use Google Sheets directly via getConfig action
+    localCacheKey: 'cobCornConfigCache',
+    cacheExpiry: 2 * 60 * 1000, // 2 minutes cache for real-time sync
+    syncInProgress: false,
+
+    async fetchRemote() {
+        if (this.syncInProgress) return null; // Debounce simultaneous requests
+        
+        this.syncInProgress = true;
+        
+        try {
+            let res;
+            let config = null;
+            
+            // Try Google Sheets first if both URLs exist, otherwise use remoteURL
+            if (this.googleSheetsURL && navigator.onLine) {
+                try {
+                    res = await fetch(this.googleSheetsURL, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: JSON.stringify({ action: 'getConfig' })
+                    });
+                    
+                    if (res.ok) {
+                        config = await res.json();
+                        // Normalize the response
+                        if (config.success) {
+                            config = {
+                                menuItems: config.menuItems,
+                                inventory: config.inventory,
+                                timestamp: config.timestamp
+                            };
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Google Sheets fetch failed, trying remote URL:', err);
+                }
+            }
+            
+            // Fallback to remote URL if Google Sheets failed or not configured
+            if (!config && this.remoteURL && navigator.onLine) {
+                res = await fetch(this.remoteURL, { method: 'GET' });
+                if (res.ok) {
+                    config = await res.json();
+                }
+            }
+            
+            this.syncInProgress = false;
+            return config;
+        } catch (err) {
+            console.warn('Remote config fetch failed:', err);
+            this.syncInProgress = false;
+            return null;
+        }
+    },
+
+    loadCachedOrDefault(key, defaults) {
+        const cached = localStorage.getItem(this.localCacheKey);
+        if (cached) {
+            try {
+                const data = JSON.parse(cached);
+                // Return from cache only if it's fresh
+                if (data[key] && Date.now() - data.timestamp < this.cacheExpiry) {
+                    return data[key];
+                }
+            } catch (e) {}
+        }
+        // Fallback to old storage location
+        return JSON.parse(localStorage.getItem('cobCorn' + key)) || defaults;
+    },
+
+    saveCache(config) {
+        const cache = { timestamp: Date.now(), ...config };
+        localStorage.setItem(this.localCacheKey, JSON.stringify(cache));
+    }
+};
+
+// DATA STORAGE (Local Orders etc.)
+let orders = JSON.parse(localStorage.getItem('cobCornOrders')) || [];
+
+// Default menu items (from screenshots)
+const DEFAULT_MENU_ITEMS = [
+    { id: 'item1', name: 'Classic Corn', price: 69, category: 'sweet-corn', inventoryId: 'sweet-corn', consumptionPerUnit: 150 },
+    { id: 'item2', name: 'Peri Peri Corn', price: 79, category: 'sweet-corn', inventoryId: 'sweet-corn', consumptionPerUnit: 150 },
+    { id: 'item3', name: 'Chatpata Corn', price: 89, category: 'sweet-corn', inventoryId: 'sweet-corn', consumptionPerUnit: 150 },
+    { id: 'item4', name: 'Chilli Cheese Corn', price: 89, category: 'sweet-corn', inventoryId: 'sweet-corn', consumptionPerUnit: 150 },
+    { id: 'item5', name: 'Cheese Nachos', price: 89, category: 'nachos', inventoryId: 'nachos', consumptionPerUnit: 100 },
+    { id: 'item6', name: 'Nachos Corn Chaat', price: 109, category: 'nachos', inventoryId: 'nachos', consumptionPerUnit: 100 },
+    { id: 'item7', name: '1L Water Bottle', price: 20, category: 'beverages', inventoryId: 'water-1l', consumptionPerUnit: 1 },
+    { id: 'item8', name: '500ml Water Bottle', price: 10, category: 'beverages', inventoryId: 'water-500ml', consumptionPerUnit: 1 },
+    { id: 'item9', name: 'Chikki', price: 10, category: 'snacks', inventoryId: 'chikki', consumptionPerUnit: 50 },
+    { id: 'item10', name: 'Aam Papad', price: 85, category: 'snacks', inventoryId: 'aam-papad', consumptionPerUnit: 100 },
+    { id: 'item11', name: 'Rs 24 Juices Paper Boat', price: 24, category: 'beverages', inventoryId: 'juices-24', consumptionPerUnit: 1 },
+    { id: 'item12', name: 'Rs 20 Coconut Water', price: 20, category: 'beverages', inventoryId: 'coconut-water', consumptionPerUnit: 1 }
+];
+
+const DEFAULT_INVENTORY = {
+    'sweet-corn': { name: 'Sweet Corn', unit: 'grams', openingStock: 10000, totalStock: 10000, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 1000 },
+    'nachos': { name: 'Nachos', unit: 'grams', openingStock: 1400, totalStock: 1400, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 500 },
+    'cups': { name: 'Cups', unit: 'pieces', openingStock: 500, totalStock: 500, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 50 },
+    'plates': { name: 'Plates', unit: 'pieces', openingStock: 500, totalStock: 500, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 50 },
+    'water-1l': { name: '1L Water Bottle', unit: 'pieces', openingStock: 200, totalStock: 200, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 30 },
+    'water-500ml': { name: '500ml Water Bottle', unit: 'pieces', openingStock: 300, totalStock: 300, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 50 },
+    'chikki': { name: 'Chikki', unit: 'grams', openingStock: 1000, totalStock: 1000, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 200 },
+    'aam-papad': { name: 'Aam Papad', unit: 'grams', openingStock: 500, totalStock: 500, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 100 },
+    'juices-24': { name: 'Rs 24 Juices Paper Boat', unit: 'pieces', openingStock: 150, totalStock: 150, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 20 },
+    'coconut-water': { name: 'Rs 20 Coconut Water', unit: 'pieces', openingStock: 100, totalStock: 100, purchases: 0, consumedToday: 0, abnormalLoss: 0, lastPurchaseDate: '', lastLossDate: '', cost: 0, minAlert: 15 }
+};
+
+let menuItems = RemoteConfigManager.loadCachedOrDefault('MenuItems', DEFAULT_MENU_ITEMS);
+let inventory = RemoteConfigManager.loadCachedOrDefault('Inventory', DEFAULT_INVENTORY);
+
+let expenses = JSON.parse(localStorage.getItem('cobCornExpenses')) || [];
+let expenseCategories = JSON.parse(localStorage.getItem('cobCornExpenseCategories')) || ['Rent', 'Utilities', 'Supplies', 'Wages', 'Marketing', 'Other'];
+let eodReconciliation = JSON.parse(localStorage.getItem('cobCornEOD')) || [];
+let currentOrder = { items: [], total: 0, payment: 'upi', paymentReceived: false, status: 'pending', customerName: '', specialNotes: '' };
+
+// INITIALIZATION
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+    updateTime();
+    setInterval(updateTime, 1000);
+    loadBillFormat();
+    loadGoogleURL();
+    checkSyncConnection();
+    applyTabLocking();
+});
+
+function initializeApp() {
+    checkDailyReset();
+    initializeRemoteConfig(); // ✅ Fetch fresh config from backend
+    loadMenuItems();
+    loadInventoryDisplay();
+    updateTodayCash();
+    updateReports();
+    loadPendingOrdersInline();
+    loadExpenseCategories();
+    loadRecentExpenses();
+    loadInventoryItemsList();
+    setTodayDate();
+}
+
+function updateTime() {
+    document.getElementById('currentTime').textContent = new Date().toLocaleTimeString('en-IN');
+}
+
+function setTodayDate() {
+    const today = new Date();
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    document.getElementById('todayDate').textContent = today.toLocaleDateString('en-IN', options);
+}
+
+function getTodayDateString() {
+    return new Date().toLocaleDateString('en-IN');
+}
+
+function updateTodayCash() {
+    const today = getTodayDateString();
+    const cash = orders
+        .filter(o => o.status === 'fulfilled' && o.paymentMethod === 'cash' && o.date === today)
+        .reduce((sum, o) => sum + o.total, 0);
+    document.getElementById('todayCash').textContent = cash.toFixed(2);
+}
+
+function checkDailyReset() {
+    const lastDate = localStorage.getItem('cobCornLastDate');
+    const today = getTodayDateString();
+
+    if (lastDate && lastDate !== today) {
+        Object.keys(inventory).forEach(key => {
+            const item = inventory[key];
+            const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+            item.openingStock = closingStock;
+            item.totalStock = closingStock;
+            item.purchases = 0;
+            item.consumedToday = 0;
+            item.abnormalLoss = 0;
+        });
+        localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    }
+
+    localStorage.setItem('cobCornLastDate', today);
+}
+
+// TAB LOCKING
+function applyTabLocking() {
+    const lockedTabs = ['inventory', 'reconciliation', 'reports', 'expenses', 'settings'];
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        const tabName = btn.getAttribute('data-tab');
+        if (lockedTabs.includes(tabName)) {
+            btn.style.opacity = '0.5';
+            btn.title = '🔒 Locked - Admin access required';
+        }
+    });
+}
+
+function switchTab(event, tabName) {
+    const lockedTabs = ['inventory', 'reconciliation', 'reports', 'expenses', 'settings'];
+
+    if (lockedTabs.includes(tabName) && !CONFIG.isAuthenticated) {
+        const password = prompt('🔒 Enter admin password:');
+        if (password === CONFIG.masterPassword) {
+            CONFIG.isAuthenticated = true;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.style.opacity = '1';
+                btn.title = '';
+            });
+            showMessage('✓ Access granted', 'success');
+        } else if (password !== null) {
+            showMessage('❌ Incorrect password', 'error');
+            return;
+        } else {
+            return;
+        }
+    }
+
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+
+    if (tabName === 'inventory') loadInventoryDisplay();
+    else if (tabName === 'reconciliation') loadEndOfDayData();
+    else if (tabName === 'reports') updateReports();
+    else if (tabName === 'expenses') loadRecentExpenses();
+    else if (tabName === 'settings') {
+        loadMenuListSettings();
+        loadInventoryItemsList();
+    }
+}
+
+// GOOGLE SHEETS
+function loadGoogleURL() {
+    const savedURL = localStorage.getItem('googleAppsScriptURL');
+    if (savedURL) {
+        CONFIG.googleAppsScriptURL = savedURL;
+        RemoteConfigManager.googleSheetsURL = savedURL; // Use Google Sheets as config source too
+        const urlInput = document.getElementById('googleURL');
+        if (urlInput) urlInput.value = savedURL;
+    }
+    
+    // Also load remote config URL if saved (for custom backend)
+    const remoteURL = localStorage.getItem('remoteConfigURL');
+    if (remoteURL) {
+        RemoteConfigManager.remoteURL = remoteURL;
+        const remoteInput = document.getElementById('remoteConfigURL');
+        if (remoteInput) remoteInput.value = remoteURL;
+    }
+}
+
+// ✅ AUTO-FETCH ORDERS FROM GOOGLE SHEETS (ALL USERS SEE SAME ORDERS)
+async function fetchOrdersFromGoogle() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) return;
+
+    try {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify({ 
+                action: 'getOrders',
+                date: getTodayDateString()
+            })
+        });
+
+        if (!response.ok) {
+            console.warn('Failed to fetch orders from Google Sheets:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (data.success && Array.isArray(data.orders)) {
+            // Merge Google Sheets orders with local orders
+            // Keep local-only orders, add/update Google Sheets orders
+            const googleOrders = data.orders;
+            const today = getTodayDateString();
+            
+            // Remove all orders from today that came from Google (keep only unsync'd local ones)
+            orders = orders.filter(o => o.date !== today || !o.synced);
+            
+            // Add all Google orders
+            googleOrders.forEach(googleOrder => {
+                // Check if order already exists
+                const existing = orders.find(o => o.orderNumber === googleOrder.orderNumber);
+                if (!existing) {
+                    // Convert single-row format back to our format if needed
+                    orders.push({
+                        orderNumber: googleOrder.orderNumber,
+                        date: googleOrder.date,
+                        time: googleOrder.time,
+                        customerName: googleOrder.customerName,
+                        items: [{
+                            name: googleOrder.item,
+                            quantity: googleOrder.qty,
+                            price: googleOrder.price,
+                            total: googleOrder.total
+                        }],
+                        total: googleOrder.total,
+                        paymentMethod: googleOrder.paymentMethod,
+                        status: googleOrder.status || 'fulfilled',
+                        synced: true,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            });
+            
+            localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+            console.log('✅ Orders synced from Google Sheets - all users see same data');
+        }
+    } catch (error) {
+        console.warn('Failed to fetch orders from Google:', error);
+    }
+}
+
+// ✅ BACKEND SYNC FUNCTIONS - Push menu/inventory changes to backend
+async function syncMenuItemsToBackend() {
+    if (!RemoteConfigManager.remoteURL || !navigator.onLine) {
+        console.log('📝 Menu items saved locally (offline or no backend URL)');
+        return false;
+    }
+
+    try {
+        const response = await fetch(RemoteConfigManager.remoteURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'updateMenuItems', menuItems: menuItems, timestamp: new Date().toISOString() })
+        });
+
+        if (response.ok) {
+            console.log('✅ Menu items synced to backend');
+            return true;
+        } else {
+            console.warn('⚠️ Menu sync returned status:', response.status);
+            return false;
+        }
+    } catch (err) {
+        console.error('❌ Menu sync failed:', err);
+        return false;
+    }
+}
+
+async function syncInventoryToBackend() {
+    if (!RemoteConfigManager.remoteURL || !navigator.onLine) {
+        console.log('📝 Inventory saved locally (offline or no backend URL)');
+        return false;
+    }
+
+    try {
+        const response = await fetch(RemoteConfigManager.remoteURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'updateInventory', inventory: inventory, timestamp: new Date().toISOString() })
+        });
+
+        if (response.ok) {
+            console.log('✅ Inventory synced to backend');
+            return true;
+        } else {
+            console.warn('⚠️ Inventory sync returned status:', response.status);
+            return false;
+        }
+    } catch (err) {
+        console.error('❌ Inventory sync failed:', err);
+        return false;
+    }
+}
+
+// ✅ INITIAL REMOTE SYNC - Fetch fresh menu/inventory from backend if available
+async function initializeRemoteConfig() {
+    if (!RemoteConfigManager.remoteURL || !navigator.onLine) return;
+    
+    const remoteConfig = await RemoteConfigManager.fetchRemote();
+    if (!remoteConfig) return;
+    
+    let menuChanged = false;
+    let inventoryChanged = false;
+    
+    if (remoteConfig.menuItems && Array.isArray(remoteConfig.menuItems)) {
+        // Only update if remote data is different
+        if (JSON.stringify(menuItems) !== JSON.stringify(remoteConfig.menuItems)) {
+            menuItems = remoteConfig.menuItems;
+            localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
+            RemoteConfigManager.saveCache({ MenuItems: menuItems });
+            menuChanged = true;
+            console.log('✅ Menu items refreshed from backend');
+        }
+    }
+    
+    if (remoteConfig.inventory && typeof remoteConfig.inventory === 'object') {
+        // Merge with local today's consumption data (don't overwrite today's changes)
+        const localConsumption = JSON.parse(localStorage.getItem('cobCornInventory')) || {};
+        Object.keys(remoteConfig.inventory).forEach(key => {
+            if (localConsumption[key]) {
+                remoteConfig.inventory[key].consumedToday = localConsumption[key].consumedToday || 0;
+                remoteConfig.inventory[key].purchases = localConsumption[key].purchases || 0;
+                remoteConfig.inventory[key].abnormalLoss = localConsumption[key].abnormalLoss || 0;
+            }
+        });
+        
+        if (JSON.stringify(inventory) !== JSON.stringify(remoteConfig.inventory)) {
+            inventory = remoteConfig.inventory;
+            localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+            RemoteConfigManager.saveCache({ Inventory: inventory });
+            inventoryChanged = true;
+            console.log('✅ Inventory refreshed from backend');
+        }
+    }
+    
+    // Refresh UI if data changed
+    if (menuChanged) {
+        loadMenuItems();
+        showMessage('📱 Menu updated from server', 'info');
+    }
+    if (inventoryChanged) {
+        loadInventoryDisplay();
+        updateInventorySummary();
+        showMessage('📊 Inventory updated from server', 'info');
+    }
+}
+
+function saveGoogleURL() {
+    const url = document.getElementById('googleURL').value.trim();
+    if (!url) {
+        showMessage('Please enter URL', 'error');
+        return;
+    }
+    CONFIG.googleAppsScriptURL = url;
+    RemoteConfigManager.googleSheetsURL = url; // ✅ Use Google Sheets as primary config source
+    localStorage.setItem('googleAppsScriptURL', url);
+    showMessage('✓ Google URL saved (will auto-sync menu & inventory)', 'success');
+}
+
+function saveRemoteConfigURL() {
+    const url = document.getElementById('remoteConfigURL').value.trim();
+    if (!url) {
+        showMessage('Please enter URL', 'error');
+        return;
+    }
+    RemoteConfigManager.remoteURL = url;
+    localStorage.setItem('remoteConfigURL', url);
+    showMessage('✓ Remote config URL saved', 'success');
+}
+
+function testRemoteConnection() {
+    if (!RemoteConfigManager.remoteURL) {
+        showMessage('Please save URL first', 'error');
+        return;
+    }
+    
+    fetch(RemoteConfigManager.remoteURL, { method: 'GET' })
+        .then(res => {
+            if (res.ok) showMessage('✓ Connected to backend', 'success');
+            else showMessage('Server responded with status ' + res.status, 'warning');
+        })
+        .catch(() => showMessage('Connection failed – check backend URL and CORS settings', 'warning'));
+}
+
+function testGoogleConnection() {
+    if (!CONFIG.googleAppsScriptURL) {
+        showMessage('Please save URL first', 'error');
+        return;
+    }
+
+    // test connection: send JSON payload without custom header (avoid preflight)
+    fetch(CONFIG.googleAppsScriptURL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'setup', timestamp: new Date().toISOString() }),
+        mode: 'cors'
+    })
+    .then(res => {
+        if (res.ok) showMessage('✓ Connected (request received)', 'success');
+        else showMessage('Test sent — server responded with status ' + res.status, 'warning');
+    })
+    .catch(() => showMessage('Test sent (check Apps Script logs) — CORS or network error', 'warning'));
+}
+
+function checkSyncConnection() {
+    if (CONFIG.googleAppsScriptURL) testGoogleConnection();
+}
+
+// MENU MANAGEMENT
+function loadMenuItems() {
+    loadQuickItems();
+    populateItemSelect();
+    loadMenuListSettings();
+}
+
+function loadQuickItems() {
+    const container = document.getElementById('quickItems');
+    if (!container) return;
+    // Update the compact inventory summary above the cards
+    updateInventorySummary();
+
+    container.innerHTML = '';
+    menuItems.forEach(item => {
+        const btn = document.createElement('div');
+        btn.className = 'quick-item';
+        btn.innerHTML = `<div class="quick-item-name">${item.name}</div><div class="quick-item-price">₹${item.price}</div>`;
+        btn.onclick = () => quickAddItem(item.name, item.price, item.id);
+        container.appendChild(btn);
+    });
+}
+
+function populateItemSelect() {
+    const select = document.getElementById('itemSelect');
+    if (!select) return;
+    select.innerHTML = '<option>-- Select Item --</option>';
+    menuItems.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.text = `${item.name} - ₹${item.price}`;
+        select.appendChild(opt);
+    });
+}
+
+function loadMenuListSettings() {
+    const container = document.getElementById('menuList');
+    if (!container) return;
+    container.innerHTML = '';
+    menuItems.forEach(item => {
+        const div = document.createElement('div');
+        div.style.cssText = 'background:#f8f9fa; padding:12px; margin-bottom:8px; border-radius:5px; border-left:4px solid #e63946;';
+        div.innerHTML = `
+            <div style="font-weight:600; margin-bottom:5px;">${item.name}</div>
+            <div style="font-size:12px; color:#666; margin-bottom:8px;">Price: ₹${item.price} | Consumption: ${item.consumptionPerUnit}g</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <button onclick="editMenuItem('${item.id}')" style="padding:6px 12px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">✏️ Edit</button>
+                <button onclick="deleteMenuItem('${item.id}')" style="padding:6px 12px; background:#d32f2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">🗑️ Delete</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function editMenuItem(itemId) {
+    const item = menuItems.find(i => i.id === itemId);
+    if (!item) return;
+    const inventoryOptions = Object.keys(inventory).map(key => `<option value="${key}" ${item.inventoryId === key ? 'selected' : ''}>${inventory[key].name}</option>`).join('');
+    const dialogHTML = `
+        <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center;" id="editDialog">
+            <div style="background:white; padding:30px; border-radius:10px; max-width:500px; width:90%;">
+                <h3 style="margin:0 0 20px 0; color:#e63946;">✏️ Edit Menu Item</h3>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:13px;">Item Name</label>
+                    <input type="text" id="editName" value="${item.name}" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:14px;">
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:13px;">Price (₹)</label>
+                    <input type="number" id="editPrice" value="${item.price}" step="1" min="0" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:14px;">
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:13px;">Consumption Per Unit (grams)</label>
+                    <input type="number" id="editConsumption" value="${item.consumptionPerUnit}" step="1" min="0" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:14px;">
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:600; font-size:13px;">Linked Inventory Item</label>
+                    <select id="editInventory" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; font-size:14px;">
+                        ${inventoryOptions}
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <button onclick="saveMenuItemEdit('${itemId}')" style="padding:12px; background:#06a77d; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:600; font-size:14px;">✓ Save</button>
+                    <button onclick="closeEditDialog()" style="padding:12px; background:#666; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:600; font-size:14px;">✕ Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+}
+
+function saveMenuItemEdit(itemId) {
+    const item = menuItems.find(i => i.id === itemId);
+    if (!item) return;
+    const newName = document.getElementById('editName').value.trim();
+    const newPrice = parseFloat(document.getElementById('editPrice').value);
+    const newConsumption = parseFloat(document.getElementById('editConsumption').value);
+    const newInventory = document.getElementById('editInventory').value;
+    
+    if (!newName || newPrice <= 0 || newConsumption <= 0) {
+        alert('Please enter valid values');
+        return;
+    }
+
+    item.name = newName;
+    item.price = newPrice;
+    item.consumptionPerUnit = newConsumption;
+    item.inventoryId = newInventory;
+    item.category = newInventory;
+
+    localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
+    RemoteConfigManager.saveCache({ MenuItems: menuItems }); // ✅ Cache update
+    syncMenuItemsToBackend(); // ✅ Push to backend
+    loadMenuItems();
+    closeEditDialog();
+    showMessage('✓ Menu item updated (syncing...)', 'success');
+}
+
+function closeEditDialog() {
+    const dialog = document.getElementById('editDialog');
+    if (dialog) dialog.remove();
+}
+
+function addMenuItem() {
+    const name = document.getElementById('newItemName').value;
+    const price = parseFloat(document.getElementById('newItemPrice').value);
+    const invId = document.getElementById('newItemInventoryId').value;
+    const consumption = parseFloat(document.getElementById('newItemConsumption').value);
+
+    if (!name || !price || !invId || !consumption) {
+        showMessage('Enter all fields', 'error');
+        return;
+    }
+
+    menuItems.push({
+        id: 'item-' + Date.now(),
+        name: name,
+        price: price,
+        category: invId,
+        inventoryId: invId,
+        consumptionPerUnit: consumption
+    });
+
+    localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
+    RemoteConfigManager.saveCache({ MenuItems: menuItems }); // ✅ Cache update
+    syncMenuItemsToBackend(); // ✅ Push to backend
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemPrice').value = '';
+    document.getElementById('newItemConsumption').value = '';
+    loadMenuItems();
+    showMessage('✓ Item added (syncing...)', 'success');
+}
+
+function deleteMenuItem(itemId) {
+    if (confirm('Delete this menu item?')) {
+        menuItems = menuItems.filter(i => i.id !== itemId);
+        localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
+        loadMenuItems();
+        showMessage('✓ Item deleted', 'success');
+    }
+}
+
+// INVENTORY MANAGEMENT
+function loadInventoryItemsList() {
+    const container = document.getElementById('inventoryItemsList');
+    if (!container) return;
+    container.innerHTML = '';
+    Object.entries(inventory).forEach(([key, item]) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; justify-content:space-between; padding:10px; background:#f8f9fa; margin-bottom:6px; border-radius:4px; align-items:center;';
+        div.innerHTML = `
+            <div>
+                <strong>${item.name}</strong>
+                <span style="color:#666; font-size:12px; margin-left:10px;">Unit: ${item.unit}</span>
+            </div>
+            <button onclick="deleteInventoryItem('${key}')" style="padding:4px 10px; background:#d32f2f; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">Delete</button>
+        `;
+        container.appendChild(div);
+    });
+
+    const invSelect = document.getElementById('newItemInventoryId');
+    if (invSelect) {
+        invSelect.innerHTML = '';
+        Object.entries(inventory).forEach(([key, item]) => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.text = item.name;
+            invSelect.appendChild(opt);
+        });
+    }
+}
+
+function addInventoryItem() {
+    const name = prompt('Inventory Item Name (e.g., Plates):');
+    if (!name || name.trim() === '') return;
+
+    const unit = prompt('Unit of Measurement (e.g., pieces, grams, liters):', 'pieces');
+    if (!unit || unit.trim() === '') return;
+
+    const openingStock = prompt('Opening Stock Quantity:', '0');
+    const qty = parseFloat(openingStock);
+    if (isNaN(qty)) {
+        showMessage('Invalid quantity', 'error');
+        return;
+    }
+
+    const key = name.toLowerCase().replace(/\s+/g, '-');
+
+    if (inventory[key]) {
+        showMessage('Item already exists', 'error');
+        return;
+    }
+
+    inventory[key] = {
+        name: name.trim(),
+        unit: unit.trim(),
+        openingStock: qty,
+        totalStock: qty,
+        purchases: 0,
+        consumedToday: 0,
+        abnormalLoss: 0,
+        lastPurchaseDate: '',
+        lastLossDate: '',
+        cost: 0,
+        minAlert: Math.max(10, qty * 0.1)
+    };
+
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    RemoteConfigManager.saveCache({ Inventory: inventory }); // ✅ Cache update
+    syncInventoryToBackend(); // ✅ Push to backend
+    loadInventoryDisplay();
+    loadInventoryItemsList();
+    showMessage('✓ Inventory item added (syncing...)', 'success');
+}
+
+function deleteInventoryItem(key) {
+    const usedByItems = menuItems.filter(item => item.inventoryId === key);
+    if (usedByItems.length > 0) {
+        const itemNames = usedByItems.map(i => i.name).join(', ');
+        showMessage(`Cannot delete - used by: ${itemNames}`, 'error');
+        return;
+    }
+
+    if (confirm(`Delete inventory item "${inventory[key].name}"?`)) {
+        delete inventory[key];
+        localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+        loadInventoryDisplay();
+        loadInventoryItemsList();
+        showMessage('✓ Inventory item deleted', 'success');
+    }
+}
+
+function loadInventoryDisplay() {
+    const container = document.getElementById('inventoryDisplay');
+    if (!container) return;
+
+    container.innerHTML = '';
+    Object.entries(inventory).forEach(([key, item]) => {
+        const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+        const available = closingStock;
+        const status = available <= item.minAlert ? '⚠️ LOW' : '✓ OK';
+        const statusClass = available <= item.minAlert ? 'stock-alert' : 'stock-ok';
+
+        const card = document.createElement('div');
+        card.className = 'inventory-card';
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0;">${item.name}</h3>
+                <span class="${statusClass}" style="padding:6px 12px; border-radius:5px; font-size:12px; font-weight:bold;">${status}</span>
+            </div>
+
+            <div style="background:#f8f9fa; padding:15px; border-radius:5px; margin-bottom:15px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #ddd;">
+                    <span style="color:#666;">Opening Stock:</span>
+                    <strong>${item.openingStock} ${item.unit}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #ddd;">
+                    <span style="color:#666;">+ Purchases:</span>
+                    <strong style="color:#06a77d;">${item.purchases} ${item.unit}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #ddd;">
+                    <span style="color:#666;">- Consumption:</span>
+                    <strong style="color:#e63946;">${item.consumedToday} ${item.unit}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:2px solid #ddd;">
+                    <span style="color:#666;">- Abnormal Loss:</span>
+                    <strong style="color:#ff9800;">${item.abnormalLoss} ${item.unit}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:12px 0 0 0;">
+                    <span style="font-weight:bold;">= Closing Stock:</span>
+                    <strong style="color:#06a77d; font-size:16px;">${closingStock} ${item.unit}</strong>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div>
+                    <label style="font-size:11px; color:#666; display:block; margin-bottom:4px;">Add Purchase (${item.unit})</label>
+                    <input type="number" id="addStock_${key}" placeholder="Qty" style="width:100%; padding:8px; font-size:13px; border:1px solid #ddd; border-radius:4px;">
+                </div>
+                <div>
+                    <label style="font-size:11px; color:#666; display:block; margin-bottom:4px;">Record Loss (${item.unit})</label>
+                    <input type="number" id="loss_${key}" placeholder="Loss" style="width:100%; padding:8px; font-size:13px; border:1px solid #ddd; border-radius:4px;">
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                <button onclick="addStock('${key}')" class="btn btn-success" style="padding:8px; font-size:12px;">➕ Add</button>
+                <button onclick="recordLoss('${key}')" style="padding:8px; background:#ff9800; color:white; border:none; border-radius:5px; cursor:pointer; font-size:12px;">📝 Loss</button>
+                <button onclick="editTotalStock('${key}')" style="padding:8px; background:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; font-size:12px;">✏️ Edit</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    // refresh summary after populating cards
+    updateInventorySummary();
+}
+
+// Render a compact inventory summary with current closing quantities
+function updateInventorySummary() {
+    const summaryEl = document.getElementById('inventorySummary');
+    const listEl = document.getElementById('inventorySummaryList');
+    if (!summaryEl || !listEl) return;
+
+    listEl.innerHTML = '';
+    Object.entries(inventory).forEach(([key, item]) => {
+        const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+        const chip = document.createElement('div');
+        chip.style.cssText = 'background:#f1f1f1; padding:8px 10px; border-radius:6px; border:1px solid #ddd;';
+        chip.innerHTML = `<strong style="display:block;">${item.name}</strong><small style="color:#555;">${closingStock} ${item.unit}</small>`;
+        listEl.appendChild(chip);
+    });
+    summaryEl.style.display = 'block';
+}
+
+function addStock(invKey) {
+    const qty = parseFloat(document.getElementById('addStock_' + invKey).value);
+    if (!qty || qty <= 0) {
+        showMessage('Enter valid quantity', 'error');
+        return;
+    }
+
+    // Only increase today's purchases — don't increment totalStock here.
+    // totalStock is used as the baseline; closingStock = totalStock + purchases - consumed - loss
+    // Incrementing totalStock here would result in double-counting in closingStock.
+    inventory[invKey].purchases += qty;
+    inventory[invKey].lastPurchaseDate = getTodayDateString();
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    document.getElementById('addStock_' + invKey).value = '';
+    loadInventoryDisplay();
+    showMessage(`✓ Added ${qty} ${inventory[invKey].unit}`, 'success');
+}
+
+function recordLoss(invKey) {
+    const loss = parseFloat(document.getElementById('loss_' + invKey).value);
+    if (!loss || loss <= 0) {
+        showMessage('Enter valid loss', 'error');
+        return;
+    }
+
+    inventory[invKey].abnormalLoss += loss;
+    inventory[invKey].lastLossDate = getTodayDateString();
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    RemoteConfigManager.saveCache({ Inventory: inventory }); // ✅ Cache update
+    document.getElementById('loss_' + invKey).value = '';
+    loadInventoryDisplay();
+    showMessage(`✓ Recorded loss: ${loss} ${inventory[invKey].unit}`, 'warning');
+}
+
+function editTotalStock(invKey) {
+    const currentStock = inventory[invKey].totalStock;
+    const newStock = prompt(`Edit Total Stock for ${inventory[invKey].name}\nCurrent: ${currentStock} ${inventory[invKey].unit}\n\nEnter new total:`);
+
+    if (newStock === null) return;
+
+    const qty = parseFloat(newStock);
+    if (isNaN(qty) || qty < 0) {
+        showMessage('Invalid quantity', 'error');
+        return;
+    }
+
+    inventory[invKey].totalStock = qty;
+    inventory[invKey].openingStock = qty;
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    loadInventoryDisplay();
+    showMessage(`✓ Stock updated to ${qty} ${inventory[invKey].unit}`, 'success');
+}
+
+function deductInventory(order) {
+    order.items.forEach(orderItem => {
+        const menuItem = menuItems.find(i => i.id === orderItem.itemId);
+        if (!menuItem || !menuItem.inventoryId) return;
+
+        const consumptionAmount = menuItem.consumptionPerUnit * orderItem.quantity;
+        const invKey = menuItem.inventoryId;
+
+        if (inventory[invKey]) {
+            inventory[invKey].consumedToday += consumptionAmount;
+        }
+
+        if (menuItem.inventoryId === 'sweet-corn' && inventory['cups']) {
+            inventory['cups'].consumedToday += orderItem.quantity;
+        }
+
+        if (menuItem.inventoryId === 'nachos' && inventory['plates']) {
+            inventory['plates'].consumedToday += orderItem.quantity;
+        }
+    });
+
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    loadInventoryDisplay();
+}
+
+// ORDER ENTRY
+function quickAddItem(itemName, price, itemId) {
+    const qty = parseInt(document.getElementById('quantity').value) || 1;
+    currentOrder.items.push({
+        id: Date.now(),
+        itemId: itemId,
+        name: itemName,
+        price: price,
+        quantity: qty,
+        total: price * qty
+    });
+    updateOrderDisplay();
+    document.getElementById('quantity').value = 1;
+}
+
+function addItemToOrder() {
+    const select = document.getElementById('itemSelect');
+    const selectedId = select.value;
+    if (!selectedId || selectedId === '-- Select Item --') return;
+
+    const item = menuItems.find(i => i.id === selectedId);
+    if (item) {
+        quickAddItem(item.name, item.price, item.id);
+        select.value = '';
+    }
+}
+
+function updateOrderDisplay() {
+    const container = document.getElementById('orderItems');
+    if (!container) return;
+
+    if (currentOrder.items.length === 0) {
+        container.innerHTML = '<div class="empty-state">📝 No items</div>';
+        updateTotals();
+        return;
+    }
+
+    let html = '<table style="width:100%; font-size:12px;"><tr style="border-bottom:2px solid #ddd;"><th style="text-align:left; padding:8px;">Item</th><th style="padding:8px;">Qty</th><th style="text-align:right; padding:8px;">Total</th><th style="padding:8px;"></th></tr>';
+    currentOrder.items.forEach((item, idx) => {
+        html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:8px;">${item.name}</td><td style="text-align:center; padding:8px;"><input type="number" value="${item.quantity}" min="1" style="width:50px; text-align:center; padding:4px; border:1px solid #ddd; border-radius:3px;" onchange="updateItemQuantity(${idx}, this.value)"></td><td style="text-align:right; padding:8px;">₹${item.total}</td><td style="padding:8px;"><button onclick="removeItem(${idx})" style="color:white; background:#ff4444; border:none; padding:4px 10px; cursor:pointer; font-size:11px; border-radius:3px;">✕</button></td></tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+    updateTotals();
+}
+
+function updateItemQuantity(idx, qty) {
+    const q = parseInt(qty) || 1;
+    currentOrder.items[idx].quantity = q;
+    currentOrder.items[idx].total = currentOrder.items[idx].price * q;
+    updateOrderDisplay();
+}
+
+function removeItem(idx) {
+    currentOrder.items.splice(idx, 1);
+    updateOrderDisplay();
+}
+
+function updateTotals() {
+    const subtotal = currentOrder.items.reduce((sum, item) => sum + item.total, 0);
+    const tax = 0;
+    const total = subtotal + tax;
+    currentOrder.total = total;
+
+    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('tax').textContent = tax.toFixed(2);
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+    document.getElementById('amount').value = total.toFixed(2);
+}
+
+function togglePaymentReceivedAndSave() {
+    currentOrder.paymentReceived = !currentOrder.paymentReceived;
+    const btn = document.getElementById('paymentReceivedBtn');
+
+    if (currentOrder.paymentReceived) {
+        btn.classList.add('active');
+        btn.innerHTML = '✓ Payment Received';
+        savePendingOrderLocally();  // ✅ Save locally only, don't sync yet
+        showMessage('✓ Payment recorded - Order waiting to be fulfilled', 'info');
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '⏱ Payment Received';
+    }
+}
+function savePendingOrderLocally() {
+    if (currentOrder.items.length === 0) {
+        alert('Add items first');
+        return;
+    }
+
+    const orderNumber = 'ORD' + Date.now();
+    const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+    const customerName = document.getElementById('customerName').value || 'Walk-in';
+    const specialNotes = document.getElementById('specialNotes').value;
+
+    const order = {
+        orderNumber: orderNumber,
+        timestamp: new Date().toISOString(),
+        items: [...currentOrder.items],
+        total: currentOrder.total,
+        paymentMethod: paymentMethod,
+        paymentReceived: currentOrder.paymentReceived,
+        status: 'pending',  // ✅ Status is PENDING, not fulfilled
+        customerName: customerName,
+        specialNotes: specialNotes,
+        date: getTodayDateString(),
+        synced: false  // ✅ NOT synced to Google yet
+    };
+
+    orders.push(order);
+    localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+    
+    showMessage(`✓ Order ${orderNumber} saved - waiting to be fulfilled`, 'success');
+    resetForm();
+    loadPendingOrdersInline();
+}
+
+// REAL-TIME ORDER SYNC TO GOOGLE SHEETS
+async function sendOrderToGoogle(order) {
+    if (!CONFIG.googleAppsScriptURL) {
+        console.warn('No Google URL configured – queuing order');
+        StorageManager.addToPending('orders', order);
+        return false;
+    }
+
+    if (!navigator.onLine) {
+        console.warn('Offline – queuing order for later sync');
+        StorageManager.addToPending('orders', order);
+        return false;
+    }
+
+    try {
+        // Send the full order with items array (saveOrderExpanded handles it)
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify({ 
+                action: 'saveOrder', 
+                order: {
+                    orderNumber: order.orderNumber,
+                    date: order.date,
+                    time: order.time || new Date().toLocaleTimeString('en-IN'),
+                    customerName: order.customerName || 'Walk-in',
+                    items: order.items || [],
+                    total: order.total,
+                    paymentMethod: order.paymentMethod,
+                    status: order.status || 'fulfilled'
+                }
+            })
+        });
+
+        if (!response.ok) {
+            console.error('❌ Order sync failed (status):', response.status);
+            StorageManager.addToPending('orders', order);
+            return false;
+        }
+
+        console.log('✅ Order synced to Google Sheets:', order.orderNumber);
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to sync order:', error);
+        StorageManager.addToPending('orders', order);
+        return false;
+    }
+}
+
+/*function saveOrder() {
+    if (currentOrder.items.length === 0) {
+        alert('Add items first');
+        return;
+    }
+
+    const orderNumber = 'ORD' + Date.now();
+    const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+    const customerName = document.getElementById('customerName').value || 'Walk-in';
+    const specialNotes = document.getElementById('specialNotes').value;
+
+    const order = {
+        orderNumber: orderNumber,
+        timestamp: new Date().toISOString(),
+        items: [...currentOrder.items],
+        total: currentOrder.total,
+        paymentMethod: paymentMethod,
+        paymentReceived: currentOrder.paymentReceived,
+        status: 'pending',
+        customerName: customerName,
+        specialNotes: specialNotes,
+        date: getTodayDateString(),
+        time: new Date().toLocaleTimeString('en-IN')
+    };
+
+    orders.push(order);
+    localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+
+    // Real-time sync to Orders sheet (with offline queue)
+    sendOrderToGoogle(order);
+
+    showMessage('✓ Order saved: ' + orderNumber, 'success');
+
+    resetForm();
+    loadPendingOrdersInline();
+}
+*/
+function resetForm() {
+    currentOrder = {
+        items: [], total: 0, payment: 'upi', paymentReceived: false,
+        status: 'pending', customerName: '', specialNotes: ''
+    };
+
+    document.getElementById('itemSelect').value = '';
+    document.getElementById('quantity').value = 1;
+    document.getElementById('customerName').value = '';
+    document.getElementById('specialNotes').value = '';
+    document.getElementById('upi').checked = true;
+
+    const paymentBtn = document.getElementById('paymentReceivedBtn');
+    if (paymentBtn) {
+        paymentBtn.classList.remove('active');
+        paymentBtn.innerHTML = '⏱ Payment Received';
+    }
+
+    updateOrderDisplay();
+}
+
+function loadPendingOrdersInline() {
+    const container = document.getElementById('pendingOrdersInline');
+    if (!container) return;
+
+    const today = getTodayDateString();
+    const pendingOrders = orders.filter(order => order.date === today && order.status === 'pending');
+
+    if (pendingOrders.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#999; padding:20px; font-size:12px;">📭 No pending orders</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    pendingOrders.forEach((order) => {
+        const itemsList = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
+
+        const orderCard = document.createElement('div');
+        orderCard.style.cssText = 'background:#fff3cd; padding:12px; margin-bottom:8px; border-left:4px solid #e63946; border-radius:5px; font-size:12px;';
+        orderCard.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <strong style="font-size:13px;">${order.orderNumber}</strong>
+                <span style="background:#fff; padding:3px 10px; border-radius:12px; font-size:10px; border:1px solid #e63946; color:#e63946;">⏱ PENDING</span>
+            </div>
+            <div style="color:#666; margin-bottom:3px; font-size:11px;">Customer: ${order.customerName}</div>
+            <div style="color:#666; margin-bottom:3px; font-size:11px;">Items: ${itemsList}</div>
+            <div style="color:#666; margin-bottom:8px; font-size:11px;">Amount: ₹${order.total.toFixed(2)} | ${order.paymentMethod.toUpperCase()}</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <button onclick="markFulfilledInline('${order.orderNumber}')" style="padding:6px; background:#06a77d; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">✓ Fulfill</button>
+                <button onclick="cancelOrderInline('${order.orderNumber}')" style="padding:6px; background:#d32f2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">❌ Cancel</button>
+            </div>
+        `;
+        container.appendChild(orderCard);
+    });
+}
+
+async function markFulfilledInline(orderNumber) {
+    const order = orders.find(o => o.orderNumber === orderNumber);
+    if (order) {
+        order.status = 'fulfilled';
+        deductInventory(order);
+        localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+        
+        // ✅ NOW sync to Google Sheets (on fulfill, not on payment)
+        const syncStatus = await syncOrderToGoogle(order);
+        if (syncStatus) {
+            order.synced = true;
+            localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+        }
+        loadPendingOrdersInline();
+        updateTodayCash();
+        loadPendingOrdersInline();  // Refresh pending orders list
+    }
+}
+
+function cancelOrderInline(orderNumber) {
+    if (confirm('Delete this order?')) {
+        orders = orders.filter(o => o.orderNumber !== orderNumber);
+        localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+        loadPendingOrdersInline();
+        updateTodayCash();
+        showMessage('✓ Order cancelled', 'success');
+    }
+}
+
+// END-OF-DAY
+function loadEndOfDayData() {
+    const today = getTodayDateString();
+    const todayOrders = orders.filter(order => order.date === today && order.status === 'fulfilled');
+
+    const systemTotal = todayOrders.reduce((sum, o) => sum + o.total, 0);
+    const cashSales = todayOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + o.total, 0);
+    const onlineSales = todayOrders.filter(o => o.paymentMethod === 'upi').reduce((sum, o) => sum + o.total, 0);
+
+    document.getElementById('eodSystemTotal').textContent = systemTotal.toFixed(2);
+    document.getElementById('eodCashSales').textContent = cashSales.toFixed(2);
+    document.getElementById('eodOnlineSales').textContent = onlineSales.toFixed(2);
+
+    let cupsSold = 0;
+    let platesSold = 0;
+
+    todayOrders.forEach(order => {
+        order.items.forEach(item => {
+            const menuItem = menuItems.find(m => m.id === item.itemId);
+            if (menuItem) {
+                if (menuItem.inventoryId === 'sweet-corn') {
+                    cupsSold += item.quantity;
+                } else if (menuItem.inventoryId === 'nachos') {
+                    platesSold += item.quantity;
+                }
+            }
+        });
+    });
+
+    document.getElementById('eodCupsSystem').textContent = cupsSold;
+    document.getElementById('eodPlatesSystem').textContent = platesSold;
+
+    const invTable = document.getElementById('eodInventoryTable');
+    if (invTable) {
+        invTable.innerHTML = '';
+        Object.entries(inventory).forEach(([key, item]) => {
+            const expected = item.openingStock + item.purchases - item.consumedToday;
+            invTable.innerHTML += `
+                <tr>
+                    <td style="padding:8px;">${item.name}</td>
+                    <td style="padding:8px;">${item.openingStock} ${item.unit}</td>
+                    <td style="padding:8px;">${item.purchases} ${item.unit}</td>
+                    <td style="padding:8px;">${item.consumedToday} ${item.unit}</td>
+                    <td style="padding:8px;">${expected} ${item.unit}</td>
+                    <td style="padding:8px;"><input type="number" id="eodActual_${key}" placeholder="Actual" style="width:80px; padding:4px; border:1px solid #ddd; border-radius:3px;"></td>
+                    <td style="padding:8px;" id="eodVariance_${key}">-</td>
+                </tr>
+            `;
+        });
+    }
+}
+
+function calculateEODCashVariance() {
+    const systemCash = parseFloat(document.getElementById('eodCashSales').textContent);
+    const actualCash = parseFloat(document.getElementById('eodActualCash').value) || 0;
+    const variance = actualCash - systemCash;
+    document.getElementById('eodCashVariance').textContent = variance.toFixed(2);
+    document.getElementById('eodCashVariance').style.color = variance >= 0 ? '#06a77d' : '#e63946';
+}
+
+function calculateEODInventoryVariance() {
+    Object.keys(inventory).forEach(key => {
+        const actualInput = document.getElementById('eodActual_' + key);
+        if (actualInput) {
+            const actual = parseFloat(actualInput.value) || 0;
+            const expected = inventory[key].openingStock + inventory[key].purchases - inventory[key].consumedToday;
+            const variance = actual - expected;
+            const varianceCell = document.getElementById('eodVariance_' + key);
+            if (varianceCell) {
+                varianceCell.textContent = variance.toFixed(0) + ' ' + inventory[key].unit;
+                varianceCell.style.color = variance >= 0 ? '#06a77d' : '#e63946';
+            }
+        }
+    });
+
+    showMessage('✓ Inventory variance calculated (will be saved on Finalize)', 'info');
+}
+
+function calculateEODCupsVariance() {
+    const system = parseInt(document.getElementById('eodCupsSystem').textContent) || 0;
+    const physical = parseInt(document.getElementById('eodCupsPhysical').value) || 0;
+    const variance = physical - system;
+    document.getElementById('eodCupsVariance').textContent = variance;
+    document.getElementById('eodCupsVariance').style.color = variance === 0 ? '#06a77d' : '#e63946';
+}
+
+function calculateEODPlatesVariance() {
+    const system = parseInt(document.getElementById('eodPlatesSystem').textContent) || 0;
+    const physical = parseInt(document.getElementById('eodPlatesPhysical').value) || 0;
+    const variance = physical - system;
+    document.getElementById('eodPlatesVariance').textContent = variance;
+    document.getElementById('eodPlatesVariance').style.color = variance === 0 ? '#06a77d' : '#e63946';
+}
+
+async function finalizeEOD() {
+    const today = getTodayDateString();
+
+    const eodData = {
+        date: today,
+        expectedCash: parseFloat(document.getElementById('eodCashSales').textContent) || 0,
+        actualCash: parseFloat(document.getElementById('eodActualCash').value) || 0,
+        variance: parseFloat(document.getElementById('eodCashVariance').textContent) || 0,
+        totalSales: parseFloat(document.getElementById('eodSystemTotal').textContent) || 0,
+        ordersCount: orders.filter(o => o.date === today && o.status === 'fulfilled').length,
+        notes: ''
+    };
+
+    // Build a single reconciliation snapshot (bulk) for all inventory items
+    const snapshot = { date: today, items: [] };
+
+    Object.keys(inventory).forEach(key => {
+        const item = inventory[key];
+        const actualClosing = parseFloat(document.getElementById('eodActual_' + key)?.value) || 0;
+        const expected = (item.openingStock || 0) + (item.purchases || 0) - (item.consumedToday || 0);
+        const variance = actualClosing - expected;
+
+        snapshot.items.push({
+            name: item.name,
+            opening: item.openingStock || 0,
+            purchased: item.purchases || 0,
+            used: item.consumedToday || 0,
+            expectedClosing: expected,
+            actualClosing: actualClosing,
+            variance: variance,
+            unit: item.unit || ''
+        });
+    });
+
+    // Try to send the full snapshot in a single request. If offline or server fails, queue it.
+    if (CONFIG.googleAppsScriptURL && navigator.onLine) {
+        try {
+            const resp = await fetch(CONFIG.googleAppsScriptURL, {
+                method: 'POST',
+                mode: 'cors',
+                body: JSON.stringify({ action: 'saveInventoryVarianceSnapshot', snapshotData: snapshot })
+            });
+
+            if (resp.ok) {
+                showMessage('✓ Inventory snapshot saved to Sheets', 'success');
+            } else {
+                console.error('❌ Snapshot save returned status', resp.status);
+                StorageManager.addToPending('reconciliation', snapshot);
+                showMessage('Saved locally (snapshot queued) — will retry on next sync', 'warning');
+            }
+        } catch (err) {
+            console.error('❌ Snapshot POST failed, queuing:', err);
+            StorageManager.addToPending('reconciliation', snapshot);
+            showMessage('Saved locally (snapshot queued) — will retry on next sync', 'warning');
+        }
+    } else {
+        // offline or no URL => queue snapshot
+        StorageManager.addToPending('reconciliation', snapshot);
+        showMessage('✓ Inventory snapshot queued for offline sync', 'info');
+    }
+
+    eodReconciliation.push(eodData);
+    localStorage.setItem('cobCornEOD', JSON.stringify(eodReconciliation));
+
+    showMessage('✓ EOD Finalized & Queued for Sheets', 'success');
+
+    if (CONFIG.googleAppsScriptURL) {
+        // Save high-level EOD summary to EOD sheet
+        // send EOD summary without custom header to avoid preflight
+        fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify({ action: 'saveEOD', eodData: eodData })
+        }).then(res => {
+            if (res.ok) console.log('✅ EOD summary sent');
+            else console.error('❌ EOD sync error: server returned', res.status);
+        }).catch(err => console.error('❌ EOD sync error:', err));
+    }
+
+    // Also push reconciliation rows now
+    syncPendingToGoogle();
+}
+
+// REPORTS
+function updateReports() {
+    const period = document.getElementById('reportPeriod')?.value || 'daily';
+    const today = new Date();
+
+    const periodOrders = orders.filter(order => order.status === 'fulfilled');
+
+    const totalSales = periodOrders.reduce((sum, o) => sum + o.total, 0);
+    const cashCount = periodOrders.filter(o => o.paymentMethod === 'cash').length;
+    const onlineCount = periodOrders.filter(o => o.paymentMethod === 'upi').length;
+    const cashTotal = periodOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + o.total, 0);
+    const onlineTotal = periodOrders.filter(o => o.paymentMethod === 'upi').reduce((sum, o) => sum + o.total, 0);
+    const avgOrder = periodOrders.length > 0 ? totalSales / periodOrders.length : 0;
+
+    document.getElementById('reportTotalSales').textContent = totalSales.toFixed(2);
+    document.getElementById('reportOrdersCount').textContent = periodOrders.length;
+    document.getElementById('reportCashTotal').textContent = cashTotal.toFixed(2);
+    document.getElementById('reportCashCount').textContent = cashCount;
+    document.getElementById('reportOnlineTotal').textContent = onlineTotal.toFixed(2);
+    document.getElementById('reportOnlineCount').textContent = onlineCount;
+    document.getElementById('reportAvgOrder').textContent = avgOrder.toFixed(2);
+
+    const itemSales = {};
+    periodOrders.forEach(order => {
+        order.items.forEach(item => {
+            if (!itemSales[item.name]) itemSales[item.name] = { qty: 0, revenue: 0 };
+            itemSales[item.name].qty += item.quantity;
+            itemSales[item.name].revenue += item.total;
+        });
+    });
+
+    const tbody = document.getElementById('itemSalesTable');
+    if (tbody) {
+        tbody.innerHTML = '';
+        Object.entries(itemSales).forEach(([name, data]) => {
+            const avgPrice = data.revenue / data.qty;
+            tbody.innerHTML += `<tr><td style="padding:8px;">${name}</td><td style="padding:8px;">${data.qty}</td><td style="padding:8px;">₹${data.revenue.toFixed(2)}</td><td style="padding:8px;">₹${avgPrice.toFixed(2)}</td></tr>`;
+        });
+        if (Object.keys(itemSales).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">No sales data</td></tr>';
+        }
+    }
+}
+
+// EXPENSES
+function loadExpenseCategories() {
+    const select = document.getElementById('expenseCategory');
+    if (select) {
+        select.innerHTML = '<option value="">-- Select Category --</option>';
+        expenseCategories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.text = cat;
+            select.appendChild(opt);
+        });
+    }
+
+    const catList = document.getElementById('expenseCategoriesList');
+    if (catList) {
+        catList.innerHTML = '';
+        expenseCategories.forEach(cat => {
+            catList.innerHTML += `
+                <div style="display:flex; justify-content:space-between; padding:8px; background:#f8f9fa; margin-bottom:5px; border-radius:4px;">
+                    <span>• ${cat}</span>
+                    <button onclick="deleteExpenseCategory('${cat}')" style="padding:2px 8px; background:#d32f2f; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">Delete</button>
+                </div>
+            `;
+        });
+    }
+}
+
+function addExpenseCategory() {
+    const name = prompt('Enter new expense category:');
+    if (!name || name.trim() === '') return;
+
+    if (expenseCategories.includes(name.trim())) {
+        showMessage('Category already exists', 'error');
+        return;
+    }
+
+    expenseCategories.push(name.trim());
+    localStorage.setItem('cobCornExpenseCategories', JSON.stringify(expenseCategories));
+    loadExpenseCategories();
+    showMessage('✓ Category added', 'success');
+}
+
+function deleteExpenseCategory(cat) {
+    if (confirm(`Delete category "${cat}"?`)) {
+        expenseCategories = expenseCategories.filter(c => c !== cat);
+        localStorage.setItem('cobCornExpenseCategories', JSON.stringify(expenseCategories));
+        loadExpenseCategories();
+        showMessage('✓ Category deleted', 'success');
+    }
+}
+
+function saveExpense() {
+    const date = document.getElementById('expenseDate').value;
+    const category = document.getElementById('expenseCategory').value;
+    const description = document.getElementById('expenseDescription').value;
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const payment = document.querySelector('input[name="expensePayment"]:checked')?.value || 'cash';
+
+    if (!date || !category || !amount) {
+        showMessage('Fill required fields', 'error');
+        return;
+    }
+
+    const expense = {
+        id: 'EXP' + Date.now(),
+        date: date,
+        category: category,
+        description: description,
+        amount: amount,
+        paymentMethod: payment,
+        timestamp: new Date().toISOString()
+    };
+
+    expenses.push(expense);
+    localStorage.setItem('cobCornExpenses', JSON.stringify(expenses));
+
+    document.getElementById('expenseDescription').value = '';
+    document.getElementById('expenseAmount').value = '';
+
+    loadRecentExpenses();
+    showMessage('✓ Expense saved', 'success');
+}
+
+function loadRecentExpenses() {
+    const container = document.getElementById('recentExpenses');
+    if (!container) return;
+
+    const recent = expenses.slice(-10).reverse();
+
+    if (recent.length === 0) {
+        container.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999; padding:20px;">No expenses recorded</td></tr>';
+        return;
+    }
+
+    container.innerHTML = '';
+    recent.forEach(exp => {
+        container.innerHTML += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px;">${exp.date}</td>
+                <td style="padding:8px;">${exp.category}</td>
+                <td style="padding:8px;">₹${exp.amount.toFixed(2)}</td>
+                <td style="padding:8px;">${exp.paymentMethod.toUpperCase()}</td>
+            </tr>
+        `;
+    });
+}
+
+// BILL PRINTING
+function loadBillFormat() {
+    const saved = localStorage.getItem('cobCornBillFormat');
+    if (saved) CONFIG.billFormat = JSON.parse(saved);
+}
+
+function saveBillFormat() {
+    CONFIG.billFormat = {
+        businessName: document.getElementById('billBusinessName').value || 'COB CORN',
+        address1: document.getElementById('billAddress1').value || 'Kharadi',
+        address2: document.getElementById('billAddress2').value || 'Pune',
+        phone: document.getElementById('billPhone').value || '+91-9876543210'
+    };
+    localStorage.setItem('cobCornBillFormat', JSON.stringify(CONFIG.billFormat));
+    showMessage('✓ Bill format saved', 'success');
+}
+
+function printBill() {
+    if (currentOrder.items.length === 0) {
+        alert('No items to print');
+        return;
+    }
+
+    loadBillFormat();
+    const billHTML = `
+        <div style="width:80mm; font-family:'Courier New', monospace; font-size:11px; line-height:1.3;">
+            <div style="text-align:center; border-bottom:1px dashed #000; padding:10px 0; margin-bottom:10px;">
+                <div style="font-size:14px; font-weight:bold;">${CONFIG.billFormat.businessName}</div>
+                <div style="font-size:10px;">${CONFIG.billFormat.address1}</div>
+                <div style="font-size:10px;">${CONFIG.billFormat.address2}</div>
+                <div style="font-size:10px;">${CONFIG.billFormat.phone}</div>
+            </div>
+            <div style="text-align:center; border-bottom:1px solid #000; padding-bottom:8px; margin-bottom:8px;">
+                <div><strong>Bill No: ORD${Date.now()}</strong></div>
+                <div style="font-size:10px;">${new Date().toLocaleString('en-IN')}</div>
+            </div>
+            <div style="margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; border-bottom:1px dashed #000; padding-bottom:5px;">
+                    <span style="font-weight:bold;">Item</span>
+                    <span style="font-weight:bold;">Qty</span>
+                    <span style="font-weight:bold;">Amount</span>
+                </div>
+    `;
+
+    let itemsHTML = '';
+    currentOrder.items.forEach(item => {
+        itemsHTML += `
+            <div style="display:flex; justify-content:space-between; margin:4px 0; font-size:10px;">
+                <span style="flex:1;">${item.name.substring(0, 20)}</span>
+                <span style="width:40px; text-align:center;">${item.quantity}</span>
+                <span style="width:50px; text-align:right;">₹${item.total.toFixed(2)}</span>
+            </div>
+        `;
+    });
+
+    const fullBill = billHTML + itemsHTML + `
+            </div>
+            <div style="border-bottom:1px dashed #000; padding-bottom:8px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                    <span>TOTAL:</span>
+                    <span>₹${currentOrder.total.toFixed(2)}</span>
+                </div>
+            </div>
+            <div style="text-align:center; font-size:10px; margin-top:10px;">
+                Thank you! Visit again
+            </div>
+        </div>
+    `;
+
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = fullBill;
+    printArea.classList.remove('hidden');
+    window.print();
+    printArea.classList.add('hidden');
+    showMessage('✓ Bill printed', 'success');
+}
+
+// DATA EXPORT
+function exportToCSV() {
+    const today = getTodayDateString();
+    const todayOrders = orders.filter(order => order.date === today);
+
+    let csv = 'Order Number,Date,Time,Customer Name,Item Name,Item Quantity,Item Price,Order Total,Payment Method,Order Status,Timestamp\n';
+
+    todayOrders.forEach(o => {
+        if (o.items && o.items.length > 0) {
+            const timeStr = new Date(o.timestamp).toLocaleTimeString('en-IN');
+            o.items.forEach(item => {
+                csv += `"${o.orderNumber}","${o.date}","${timeStr}","${o.customerName}","${item.name}",${item.quantity},${item.price},${o.total},"${o.paymentMethod}","${o.status}","${o.timestamp}"\n`;
+            });
+        }
+    });
+
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+    element.setAttribute('download', 'cobcorn-orders-' + today.replace(/\//g, '-') + '.csv');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    showMessage('✓ CSV exported', 'success');
+}
+
+// DATA CLEARING
+function clearTodayOrders() {
+    const today = getTodayDateString();
+    const count = orders.filter(o => o.date === today).length;
+
+    if (confirm(`Delete ${count} orders from today?`)) {
+        orders = orders.filter(o => o.date !== today);
+        localStorage.setItem('cobCornOrders', JSON.stringify(orders));
+        loadPendingOrdersInline();
+        showMessage('✓ Today\'s orders cleared', 'success');
+    }
+}
+
+function clearAllData() {
+    if (confirm('⚠️ DELETE ALL DATA?')) {
+        if (confirm('Really sure? Cannot undo!')) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+}
+
+// UTILITIES
+function showMessage(text, type) {
+    const bgColors = {
+        success: '#06a77d',
+        error: '#d32f2f',
+        warning: '#ff9800',
+        info: '#2196F3'
+    };
+    const div = document.createElement('div');
+    div.style.cssText = `position:fixed; top:20px; right:20px; z-index:9999; max-width:300px; background:${bgColors[type] || '#333'}; color:white; padding:12px 16px; border-radius:5px; box-shadow:0 4px 12px rgba(0,0,0,0.3); font-size:13px; font-weight:500;`;
+    div.textContent = text;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 2500);
+}
+
+console.log('✅ Cob Corn POS - FULLY WORKING (Orders → Orders sheet, Reconciliation → Inventory Reconciliation)');
+    </script>
+</body>
+</html>
