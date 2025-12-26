@@ -729,6 +729,137 @@ async function syncOrderToGoogle(order) {
     }
 }
 
+// ✅ SYNC SINGLE EXPENSE TO GOOGLE SHEETS
+async function syncExpenseToGoogle(expense) {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        console.log('📝 Expense saved locally (offline or no Google URL)');
+        return;
+    }
+
+    try {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'saveExpense',
+                expense: expense
+            }),
+            mode: 'cors'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                console.log('✅ Expense synced to Google Sheets: ' + expense.id);
+            }
+        }
+    } catch (err) {
+        console.warn('⚠️ Expense sync error (will retry):', err.message);
+    }
+}
+
+// ✅ FETCH EXPENSES FROM GOOGLE SHEETS (ALL USERS SEE SAME EXPENSES)
+async function fetchExpensesFromGoogle() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) return;
+
+    try {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'getExpenses'
+            }),
+            mode: 'cors'
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.expenses)) return;
+
+        // Merge Google expenses with local expenses
+        const googleExpenses = data.expenses;
+        let newExpensesFound = false;
+
+        googleExpenses.forEach(googleExp => {
+            // Check if expense already exists locally
+            const exists = expenses.find(e => e.id === googleExp.id || 
+                (e.date === googleExp.date && e.amount === googleExp.amount && e.category === googleExp.category));
+            
+            if (!exists) {
+                expenses.push({
+                    id: googleExp.id || 'EXP' + Date.now(),
+                    date: googleExp.date,
+                    category: googleExp.category,
+                    amount: googleExp.amount,
+                    description: googleExp.description || '',
+                    paymentMethod: googleExp.paymentMethod || 'cash',
+                    timestamp: googleExp.timestamp || new Date().toISOString()
+                });
+                newExpensesFound = true;
+                console.log('📥 New expense synced: ₹' + googleExp.amount);
+            }
+        });
+
+        if (newExpensesFound) {
+            localStorage.setItem('cobCornExpenses', JSON.stringify(expenses));
+            loadRecentExpenses();
+            console.log('✅ Expenses synced from Google Sheets');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error fetching expenses:', error.message);
+    }
+}
+
+// ✅ FETCH INVENTORY FROM GOOGLE SHEETS (ALL USERS SEE SAME INVENTORY)
+async function fetchInventoryFromGoogle() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) return;
+
+    try {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'getInventory'
+            }),
+            mode: 'cors'
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data.success || !data.inventory) return;
+
+        const googleInventory = data.inventory;
+        let inventoryChanged = false;
+
+        // Merge remote inventory with local inventory (preserve today's consumption)
+        Object.keys(googleInventory).forEach(key => {
+            if (inventory[key]) {
+                // Keep local consumption data, update everything else
+                const localConsumption = inventory[key].consumedToday || 0;
+                const localPurchases = inventory[key].purchases || 0;
+                const localLoss = inventory[key].abnormalLoss || 0;
+
+                inventory[key] = googleInventory[key];
+                inventory[key].consumedToday = localConsumption;
+                inventory[key].purchases = localPurchases;
+                inventory[key].abnormalLoss = localLoss;
+                inventoryChanged = true;
+            } else {
+                inventory[key] = googleInventory[key];
+                inventoryChanged = true;
+            }
+        });
+
+        if (inventoryChanged) {
+            localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+            loadInventoryDisplay();
+            updateInventorySummary();
+            console.log('✅ Inventory synced from Google Sheets');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error fetching inventory:', error.message);
+    }
+}
+
 // AUTO-SYNC INITIAL + CONTINUOUS POLLING
 let autoSyncInterval = null;
 let autoRefreshInterval = null;
@@ -754,6 +885,20 @@ function startAutoSync() {
             fetchOrdersFromGoogle();
         }
     }, 15000); // 15 seconds
+
+    // ✅ Auto-fetch expenses from Google Sheets every 30 seconds (all users see same expenses)
+    setInterval(() => {
+        if (navigator.onLine && CONFIG.googleAppsScriptURL) {
+            fetchExpensesFromGoogle();
+        }
+    }, 30000); // 30 seconds
+
+    // ✅ Auto-fetch inventory from Google Sheets every 30 seconds (all users see same inventory)
+    setInterval(() => {
+        if (navigator.onLine && CONFIG.googleAppsScriptURL) {
+            fetchInventoryFromGoogle();
+        }
+    }, 30000); // 30 seconds
 }
 
 function stopAutoSync() {
@@ -1086,53 +1231,66 @@ async function fetchOrdersFromGoogle() {
 
 // ✅ BACKEND SYNC FUNCTIONS - Push menu/inventory changes to backend
 async function syncMenuItemsToBackend() {
-    if (!RemoteConfigManager.remoteURL || !navigator.onLine) {
-        console.log('📝 Menu items saved locally (offline or no backend URL)');
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        console.log('📝 Menu items saved locally (offline or no Google URL)');
         return false;
     }
 
     try {
-        const response = await fetch(RemoteConfigManager.remoteURL, {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'updateMenuItems', menuItems: menuItems, timestamp: new Date().toISOString() })
+            body: JSON.stringify({
+                action: 'saveMenu',
+                menuItems: menuItems
+            }),
+            mode: 'cors'
         });
 
         if (response.ok) {
-            console.log('✅ Menu items synced to backend');
-            return true;
-        } else {
-            console.warn('⚠️ Menu sync returned status:', response.status);
-            return false;
+            const data = await response.json();
+            if (data.success) {
+                console.log('✅ Menu items synced to Google Sheets');
+                RemoteConfigManager.saveCache({ MenuItems: menuItems });
+                return true;
+            }
         }
+        return false;
     } catch (err) {
-        console.error('❌ Menu sync failed:', err);
+        console.warn('⚠️ Menu sync error (will retry):', err.message);
         return false;
     }
 }
 
 async function syncInventoryToBackend() {
-    if (!RemoteConfigManager.remoteURL || !navigator.onLine) {
-        console.log('📝 Inventory saved locally (offline or no backend URL)');
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        console.log('📝 Inventory saved locally (offline or no Google URL)');
         return false;
     }
 
     try {
-        const response = await fetch(RemoteConfigManager.remoteURL, {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'updateInventory', inventory: inventory, timestamp: new Date().toISOString() })
+            body: JSON.stringify({
+                action: 'saveInventory',
+                inventory: inventory
+            }),
+            mode: 'cors'
         });
 
         if (response.ok) {
-            console.log('✅ Inventory synced to backend');
-            return true;
-        } else {
-            console.warn('⚠️ Inventory sync returned status:', response.status);
-            return false;
+            const data = await response.json();
+            if (data.success) {
+                console.log('✅ Inventory synced to Google Sheets');
+                RemoteConfigManager.saveCache({ Inventory: inventory });
+                return true;
+            }
         }
+        return false;
     } catch (err) {
-        console.error('❌ Inventory sync failed:', err);
+        console.warn('⚠️ Inventory sync error (will retry):', err.message);
+        return false;
+    }
+}
         return false;
     }
 }
@@ -2246,11 +2404,14 @@ function saveExpense() {
     expenses.push(expense);
     localStorage.setItem('cobCornExpenses', JSON.stringify(expenses));
 
+    // ✅ Sync to Google Sheets immediately
+    syncExpenseToGoogle(expense);
+
     document.getElementById('expenseDescription').value = '';
     document.getElementById('expenseAmount').value = '';
 
     loadRecentExpenses();
-    showMessage('✓ Expense saved', 'success');
+    showMessage('✓ Expense saved (syncing to all users...)', 'success');
 }
 
 function loadRecentExpenses() {
