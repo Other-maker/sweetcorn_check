@@ -877,12 +877,24 @@ async function fetchInventoryFromGoogle() {
 // ✅ ENSURE ALL INVENTORY ITEMS HAVE UNIT FIELD (merge from defaults)
 function ensureInventoryUnits() {
     Object.keys(inventory).forEach(key => {
-        if (!inventory[key].unit) {
+        const item = inventory[key];
+        
+        // If unit is missing or undefined, fill it from DEFAULT_INVENTORY
+        if (!item.unit || item.unit === undefined || item.unit === 'undefined') {
             const defaultItem = DEFAULT_INVENTORY[key];
             if (defaultItem && defaultItem.unit) {
-                inventory[key].unit = defaultItem.unit;
+                item.unit = defaultItem.unit;
             } else {
-                inventory[key].unit = ''; // Fallback to empty string, not undefined
+                // Assign a sensible default based on item name
+                if (item.name && (item.name.toLowerCase().includes('bottle') || item.name.toLowerCase().includes('water'))) {
+                    item.unit = 'pieces';
+                } else if (item.name && (item.name.toLowerCase().includes('cup') || item.name.toLowerCase().includes('plate'))) {
+                    item.unit = 'pieces';
+                } else if (item.name && (item.name.toLowerCase().includes('corn') || item.name.toLowerCase().includes('nachos') || item.name.toLowerCase().includes('papad') || item.name.toLowerCase().includes('chikki'))) {
+                    item.unit = 'grams';
+                } else {
+                    item.unit = 'pieces'; // Default fallback
+                }
             }
         }
     });
@@ -1783,10 +1795,11 @@ function loadInventoryItemsList() {
     Object.entries(inventory).forEach(([key, item]) => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; justify-content:space-between; padding:10px; background:#f8f9fa; margin-bottom:6px; border-radius:4px; align-items:center;';
+        const unitDisplay = (item.unit && item.unit !== 'undefined') ? item.unit : 'pieces';
         div.innerHTML = `
             <div>
                 <strong>${item.name}</strong>
-                <span style="color:#666; font-size:12px; margin-left:10px;">Unit: ${item.unit}</span>
+                <span style="color:#666; font-size:12px; margin-left:10px;">Unit: ${unitDisplay}</span>
             </div>
             <button onclick="deleteInventoryItem('${key}')" style="padding:4px 10px; background:#d32f2f; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">Delete</button>
         `;
