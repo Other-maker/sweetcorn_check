@@ -271,8 +271,9 @@
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:20px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:20px;">
                 <button class="btn btn-primary" onclick="finalizeEOD()" style="padding:15px; font-size:16px;">✓ Finalize & Save to Sheets</button>
+                <button class="btn" style="background:#f77f00; color:white; padding:15px; font-size:16px;" onclick="saveEODSnapshotNow()">💾 Save Inventory Snapshot</button>
                 <button class="btn" style="background:#2196F3; color:white; padding:15px; font-size:16px;" onclick="alert('Download feature coming soon')">📥 Download Report</button>
             </div>
         </div>
@@ -860,6 +861,101 @@ async function fetchInventoryFromGoogle() {
     }
 }
 
+// ✅ FETCH LATEST EOD INVENTORY CLOSING ROWS
+async function fetchLatestEODFromGoogle() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) return null;
+
+    try {
+        // Use Apps Script getInventory endpoint which returns a keyed inventory object
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getInventory' }),
+            mode: 'cors'
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        if (!data || !data.success || !data.inventory) return null;
+
+        // Convert Apps Script keys (lowercase_with_underscores) to frontend keys (hyphenated)
+        const latest = {};
+        Object.keys(data.inventory).forEach(k => {
+            const normalizedKey = k.replace(/_/g, '-');
+            const item = data.inventory[k];
+            const closing = item.closingStock || item.closingStock === 0 ? item.closingStock : (item.closingStock || item.closing || item.closingStock);
+            // Preserve unit from DEFAULT_INVENTORY if available
+            const defaultItem = DEFAULT_INVENTORY[normalizedKey];
+            const unit = defaultItem ? defaultItem.unit : (item.unit || '');
+            latest[normalizedKey] = { closingStock: parseFloat(closing) || 0, date: item.date || null, unit: unit };
+        });
+
+        return latest;
+    } catch (err) {
+        console.warn('⚠️ Error fetching latest inventory from Google:', err && err.message);
+        return null;
+    }
+}
+
+// ✅ SAVE EOD INVENTORY SNAPSHOT (append rows to Inventory sheet)
+async function saveEODInventoryRow(dateString, inventorySnapshot) {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) return false;
+
+    try {
+        // Prepare payload for saveInventory: convert frontend keys (hyphen) to Apps Script keys (underscores)
+        const inventoryForSave = {};
+        Object.keys(inventorySnapshot).forEach(k => {
+            const asKey = k.replace(/-/g, '_');
+            inventoryForSave[asKey] = inventorySnapshot[k];
+        });
+
+        // 1) Update Inventory sheet (overwrites current inventory rows)
+        const resp1 = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveInventory', inventory: inventoryForSave }),
+            mode: 'cors'
+        });
+
+        let success1 = false;
+        if (resp1 && resp1.ok) {
+            const d1 = await resp1.json();
+            success1 = !!(d1 && d1.success);
+        }
+
+        // 2) Append a human-readable snapshot to Inventory Reconciliation for history
+        const items = Object.keys(inventorySnapshot).map(k => {
+            const it = inventorySnapshot[k];
+            return {
+                name: it.name || k,
+                opening: it.openingStock || it.opening || 0,
+                purchased: it.purchases || 0,
+                used: it.consumedToday || it.used || 0,
+                expectedClosing: (it.totalStock || it.openingStock || 0) + (it.purchases || 0) - (it.consumedToday || it.used || 0) - (it.abnormalLoss || 0),
+                actualClosing: it.closingStock || ((it.totalStock || it.openingStock || 0) - (it.consumedToday || 0) + (it.purchases || 0) - (it.abnormalLoss || 0)),
+                variance: 0,
+                unit: it.unit || ''
+            };
+        });
+
+        const resp2 = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveInventoryVarianceSnapshot', snapshotData: { date: dateString, items: items } }),
+            mode: 'cors'
+        });
+
+        let success2 = false;
+        if (resp2 && resp2.ok) {
+            const d2 = await resp2.json();
+            success2 = !!(d2 && d2.success);
+        }
+
+        return success1 || success2;
+    } catch (err) {
+        console.warn('⚠️ Error saving EOD inventory:', err && err.message);
+        return false;
+    }
+}
+
 // AUTO-SYNC INITIAL + CONTINUOUS POLLING
 let autoSyncInterval = null;
 let autoRefreshInterval = null;
@@ -1322,47 +1418,88 @@ async function syncInventoryToBackend() {
 // ✅ INITIAL REMOTE SYNC - Fetch fresh menu/inventory from backend if available
 async function initializeRemoteConfig() {
     if (!navigator.onLine) return;
-    
+
     // Don't fetch if no remote URL configured
     if (!RemoteConfigManager.remoteURL && !RemoteConfigManager.googleSheetsURL) return;
-    
-    const remoteConfig = await RemoteConfigManager.fetchRemote();
+
+    let remoteConfig = null;
+    try {
+        remoteConfig = await RemoteConfigManager.fetchRemote();
+    } catch (err) {
+        console.warn('❗ Remote config fetch failed (non-blocking):', err && err.message);
+        return;
+    }
     if (!remoteConfig) return;
-    
+
     let menuChanged = false;
     let inventoryChanged = false;
-    
-    if (remoteConfig.menuItems && Array.isArray(remoteConfig.menuItems)) {
-        // Only update if remote data is different
-        if (JSON.stringify(menuItems) !== JSON.stringify(remoteConfig.menuItems)) {
-            menuItems = remoteConfig.menuItems;
-            localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
-            RemoteConfigManager.saveCache({ MenuItems: menuItems });
-            menuChanged = true;
-            console.log('✅ Menu items refreshed from backend');
-        }
-    }
-    
-    if (remoteConfig.inventory && typeof remoteConfig.inventory === 'object') {
-        // Merge with local today's consumption data (don't overwrite today's changes)
-        const localConsumption = JSON.parse(localStorage.getItem('cobCornInventory')) || {};
-        Object.keys(remoteConfig.inventory).forEach(key => {
-            if (localConsumption[key]) {
-                remoteConfig.inventory[key].consumedToday = localConsumption[key].consumedToday || 0;
-                remoteConfig.inventory[key].purchases = localConsumption[key].purchases || 0;
-                remoteConfig.inventory[key].abnormalLoss = localConsumption[key].abnormalLoss || 0;
+
+    // Validate and apply remote menu only if it contains at least one valid item
+    if (Array.isArray(remoteConfig.menuItems) && remoteConfig.menuItems.length > 0) {
+        try {
+            if (JSON.stringify(menuItems) !== JSON.stringify(remoteConfig.menuItems)) {
+                menuItems = remoteConfig.menuItems;
+                localStorage.setItem('cobCornMenuItems', JSON.stringify(menuItems));
+                RemoteConfigManager.saveCache({ MenuItems: menuItems });
+                menuChanged = true;
+                console.log('✅ Menu items refreshed from backend');
             }
-        });
-        
-        if (JSON.stringify(inventory) !== JSON.stringify(remoteConfig.inventory)) {
-            inventory = remoteConfig.inventory;
-            localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
-            RemoteConfigManager.saveCache({ Inventory: inventory });
-            inventoryChanged = true;
-            console.log('✅ Inventory refreshed from backend');
+        } catch (err) {
+            console.warn('⚠️ Skipping remote menu update due to invalid data:', err.message || err);
         }
+    } else if (remoteConfig.hasOwnProperty('menuItems')) {
+        console.log('ℹ️ Remote menu present but empty or invalid — skipping update to avoid data loss');
     }
-    
+
+    // Validate and apply remote inventory only if it contains keys
+    if (remoteConfig.inventory && typeof remoteConfig.inventory === 'object' && Object.keys(remoteConfig.inventory).length > 0) {
+        try {
+            // Merge with local today's consumption data (don't overwrite today's changes)
+            const localConsumption = JSON.parse(localStorage.getItem('cobCornInventory')) || {};
+
+            // Try to fetch latest EOD closing values to use as opening/total stock
+            let latestEOD = null;
+            try {
+                latestEOD = await fetchLatestEODFromGoogle();
+            } catch (e) {
+                console.warn('Could not retrieve latest EOD from Google:', e && e.message);
+            }
+
+            Object.keys(remoteConfig.inventory).forEach(key => {
+                // Merge with default unit to avoid undefined values
+                const defaultItem = DEFAULT_INVENTORY[key];
+                if (defaultItem && defaultItem.unit && !remoteConfig.inventory[key].unit) {
+                    remoteConfig.inventory[key].unit = defaultItem.unit;
+                }
+
+                // preserve today's local deltas if present
+                if (localConsumption[key]) {
+                    remoteConfig.inventory[key].consumedToday = localConsumption[key].consumedToday || 0;
+                    remoteConfig.inventory[key].purchases = localConsumption[key].purchases || 0;
+                    remoteConfig.inventory[key].abnormalLoss = localConsumption[key].abnormalLoss || 0;
+                }
+
+                // If EOD closing exists for this key, set opening/total from it
+                if (latestEOD && latestEOD[key] && typeof latestEOD[key].closingStock !== 'undefined') {
+                    remoteConfig.inventory[key].openingStock = latestEOD[key].closingStock;
+                    remoteConfig.inventory[key].totalStock = latestEOD[key].closingStock;
+                }
+            });
+
+            if (JSON.stringify(inventory) !== JSON.stringify(remoteConfig.inventory)) {
+                inventory = remoteConfig.inventory;
+                localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+                RemoteConfigManager.saveCache({ Inventory: inventory });
+                inventoryChanged = true;
+                console.log('✅ Inventory refreshed from backend');
+            }
+        } catch (err) {
+            console.warn('⚠️ Skipping remote inventory update due to invalid data:', err.message || err);
+        }
+    } else if (remoteConfig.hasOwnProperty('inventory')) {
+        console.log('ℹ️ Remote inventory present but empty or invalid — skipping update to avoid data loss');
+    }
+
     // Refresh UI if data changed (only show messages if showMessage is ready)
     if (typeof showMessage === 'function') {
         if (menuChanged) {
@@ -2235,6 +2372,43 @@ function calculateEODPlatesVariance() {
     const variance = physical - system;
     document.getElementById('eodPlatesVariance').textContent = variance;
     document.getElementById('eodPlatesVariance').style.color = variance === 0 ? '#06a77d' : '#e63946';
+}
+
+async function saveEODSnapshotNow() {
+    const today = getTodayDateString();
+    
+    if (!CONFIG.googleAppsScriptURL) {
+        showMessage('❌ Google Apps Script URL not configured', 'error');
+        return;
+    }
+    
+    // Build inventory snapshot from current state
+    const snapshot = { date: today, items: [] };
+    
+    Object.keys(inventory).forEach(key => {
+        const item = inventory[key];
+        snapshot.items.push({
+            name: item.name,
+            opening: item.openingStock || 0,
+            purchased: item.purchases || 0,
+            used: item.consumedToday || 0,
+            expectedClosing: (item.openingStock || 0) + (item.purchases || 0) - (item.consumedToday || 0) - (item.abnormalLoss || 0),
+            actualClosing: (item.openingStock || 0) + (item.purchases || 0) - (item.consumedToday || 0) - (item.abnormalLoss || 0),
+            variance: 0,
+            unit: item.unit || ''
+        });
+    });
+    
+    console.log('📸 Saving EOD inventory snapshot...', snapshot);
+    const success = await saveEODInventoryRow(today, snapshot);
+    
+    if (success) {
+        showMessage('✅ Inventory snapshot saved to Google Sheets', 'success');
+        console.log('✅ EOD snapshot sent to Sheets');
+    } else {
+        showMessage('⚠️ Snapshot save failed or offline — will retry on next sync', 'warning');
+        console.warn('⚠️ EOD snapshot offline or failed');
+    }
 }
 
 async function finalizeEOD() {
