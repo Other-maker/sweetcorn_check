@@ -1034,6 +1034,7 @@ let currentOrder = { items: [], total: 0, payment: 'upi', paymentReceived: false
 
 // INITIALIZATION
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔄 Initializing Cob Corn POS...');
     initializeApp();
     updateTime();
     setInterval(updateTime, 1000);
@@ -1041,20 +1042,46 @@ document.addEventListener('DOMContentLoaded', function() {
     loadGoogleURL();
     checkSyncConnection();
     applyTabLocking();
+    console.log('✅ Cob Corn POS Initialized Successfully!');
 });
 
 function initializeApp() {
-    checkDailyReset();
-    initializeRemoteConfig(); // ✅ Fetch fresh config from backend
-    loadMenuItems();
-    loadInventoryDisplay();
-    updateTodayCash();
-    updateReports();
-    loadPendingOrdersInline();
-    loadExpenseCategories();
-    loadRecentExpenses();
-    loadInventoryItemsList();
-    setTodayDate();
+    try {
+        console.log('📋 Starting app initialization...');
+        checkDailyReset();
+        console.log('✓ Daily reset checked');
+        
+        // Only call initializeRemoteConfig if it's safe
+        if (navigator.onLine) {
+            initializeRemoteConfig().catch(err => console.warn('Remote config load skipped:', err.message));
+        }
+        
+        console.log('📋 Loading menu items...');
+        loadMenuItems();
+        console.log('✓ Menu items loaded');
+        
+        console.log('📊 Loading inventory...');
+        loadInventoryDisplay();
+        console.log('✓ Inventory loaded');
+        
+        updateTodayCash();
+        updateReports();
+        loadPendingOrdersInline();
+        loadExpenseCategories();
+        loadRecentExpenses();
+        loadInventoryItemsList();
+        setTodayDate();
+        
+        // Start auto-sync after UI is ready
+        setTimeout(() => {
+            console.log('🔄 Starting auto-sync...');
+            startAutoSync();
+        }, 1000);
+        
+        console.log('✅ All initialization complete');
+    } catch (err) {
+        console.error('❌ Initialization error:', err);
+    }
 }
 
 function updateTime() {
@@ -1297,7 +1324,10 @@ async function syncInventoryToBackend() {
 
 // ✅ INITIAL REMOTE SYNC - Fetch fresh menu/inventory from backend if available
 async function initializeRemoteConfig() {
-    if (!RemoteConfigManager.remoteURL || !navigator.onLine) return;
+    if (!navigator.onLine) return;
+    
+    // Don't fetch if no remote URL configured
+    if (!RemoteConfigManager.remoteURL && !RemoteConfigManager.googleSheetsURL) return;
     
     const remoteConfig = await RemoteConfigManager.fetchRemote();
     if (!remoteConfig) return;
@@ -1336,15 +1366,24 @@ async function initializeRemoteConfig() {
         }
     }
     
-    // Refresh UI if data changed
-    if (menuChanged) {
-        loadMenuItems();
-        showMessage('📱 Menu updated from server', 'info');
-    }
-    if (inventoryChanged) {
-        loadInventoryDisplay();
-        updateInventorySummary();
-        showMessage('📊 Inventory updated from server', 'info');
+    // Refresh UI if data changed (only show messages if showMessage is ready)
+    if (typeof showMessage === 'function') {
+        if (menuChanged) {
+            loadMenuItems();
+            showMessage('📱 Menu updated from server', 'info');
+        }
+        if (inventoryChanged) {
+            loadInventoryDisplay();
+            updateInventorySummary();
+            showMessage('📊 Inventory updated from server', 'info');
+        }
+    } else {
+        // During initialization, just update UI without messages
+        if (menuChanged) loadMenuItems();
+        if (inventoryChanged) {
+            loadInventoryDisplay();
+            updateInventorySummary();
+        }
     }
 }
 
