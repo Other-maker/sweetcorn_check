@@ -876,29 +876,37 @@ async function fetchInventoryFromGoogle() {
 
 // ✅ ENSURE ALL INVENTORY ITEMS HAVE UNIT FIELD (merge from defaults)
 function ensureInventoryUnits() {
+    let changed = false;
     Object.keys(inventory).forEach(key => {
         const item = inventory[key];
         
-        // If unit is missing or undefined, fill it from DEFAULT_INVENTORY
-        if (!item.unit || item.unit === undefined || item.unit === 'undefined') {
+        // If unit is missing or undefined or empty, fill it from DEFAULT_INVENTORY
+        if (!item.unit || item.unit === undefined || item.unit === 'undefined' || item.unit.trim() === '') {
             const defaultItem = DEFAULT_INVENTORY[key];
             if (defaultItem && defaultItem.unit) {
                 item.unit = defaultItem.unit;
+                changed = true;
             } else {
                 // Assign a sensible default based on item name
                 if (item.name && (item.name.toLowerCase().includes('bottle') || item.name.toLowerCase().includes('water'))) {
                     item.unit = 'pieces';
+                    changed = true;
                 } else if (item.name && (item.name.toLowerCase().includes('cup') || item.name.toLowerCase().includes('plate'))) {
                     item.unit = 'pieces';
+                    changed = true;
                 } else if (item.name && (item.name.toLowerCase().includes('corn') || item.name.toLowerCase().includes('nachos') || item.name.toLowerCase().includes('papad') || item.name.toLowerCase().includes('chikki'))) {
                     item.unit = 'grams';
-                } else {
+                    changed = true;
+                } else if (!item.unit || item.unit.trim() === '') {
                     item.unit = 'pieces'; // Default fallback
+                    changed = true;
                 }
             }
         }
     });
-    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    if (changed) {
+        localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+    }
 }
 
 // ✅ FETCH LATEST EOD INVENTORY CLOSING ROWS
@@ -1795,7 +1803,11 @@ function loadInventoryItemsList() {
     Object.entries(inventory).forEach(([key, item]) => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; justify-content:space-between; padding:10px; background:#f8f9fa; margin-bottom:6px; border-radius:4px; align-items:center;';
-        const unitDisplay = (item.unit && item.unit !== 'undefined') ? item.unit : 'pieces';
+        // Ensure unit is always displayed (never empty or undefined)
+        let unitDisplay = item.unit;
+        if (!unitDisplay || unitDisplay === undefined || unitDisplay === 'undefined' || unitDisplay.trim() === '') {
+            unitDisplay = 'pieces'; // Default fallback
+        }
         div.innerHTML = `
             <div>
                 <strong>${item.name}</strong>
