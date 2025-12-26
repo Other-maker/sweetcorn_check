@@ -843,14 +843,27 @@ async function fetchInventoryFromGoogle() {
                 inventory[key].consumedToday = localConsumption;
                 inventory[key].purchases = localPurchases;
                 inventory[key].abnormalLoss = localLoss;
+                
+                // Ensure unit field is populated from defaults if missing
+                if (!inventory[key].unit && DEFAULT_INVENTORY[key]) {
+                    inventory[key].unit = DEFAULT_INVENTORY[key].unit;
+                }
+                
                 inventoryChanged = true;
             } else {
                 inventory[key] = googleInventory[key];
+                
+                // Ensure unit field is populated from defaults if missing
+                if (!inventory[key].unit && DEFAULT_INVENTORY[key]) {
+                    inventory[key].unit = DEFAULT_INVENTORY[key].unit;
+                }
+                
                 inventoryChanged = true;
             }
         });
 
         if (inventoryChanged) {
+            ensureInventoryUnits(); // Double-check all units are populated
             localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
             loadInventoryDisplay();
             updateInventorySummary();
@@ -859,6 +872,21 @@ async function fetchInventoryFromGoogle() {
     } catch (error) {
         console.warn('⚠️ Error fetching inventory:', error.message);
     }
+}
+
+// ✅ ENSURE ALL INVENTORY ITEMS HAVE UNIT FIELD (merge from defaults)
+function ensureInventoryUnits() {
+    Object.keys(inventory).forEach(key => {
+        if (!inventory[key].unit) {
+            const defaultItem = DEFAULT_INVENTORY[key];
+            if (defaultItem && defaultItem.unit) {
+                inventory[key].unit = defaultItem.unit;
+            } else {
+                inventory[key].unit = ''; // Fallback to empty string, not undefined
+            }
+        }
+    });
+    localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
 }
 
 // ✅ FETCH LATEST EOD INVENTORY CLOSING ROWS
@@ -989,12 +1017,12 @@ function startAutoSync() {
         }
     }, 30000); // 30 seconds
 
-    // ✅ Auto-fetch inventory from Google Sheets every 30 seconds (all users see same inventory)
+    // ✅ Auto-fetch inventory from Google Sheets every 15 seconds (all users see same inventory in real-time)
     setInterval(() => {
         if (navigator.onLine && CONFIG.googleAppsScriptURL) {
             fetchInventoryFromGoogle();
         }
-    }, 30000); // 30 seconds
+    }, 15000); // 15 seconds
 }
 
 function stopAutoSync() {
@@ -1157,6 +1185,7 @@ function initializeApp() {
         console.log('✓ Menu items loaded');
         
         console.log('📊 Loading inventory...');
+        ensureInventoryUnits(); // Fix any undefined units
         loadInventoryDisplay();
         console.log('✓ Inventory loaded');
         
@@ -1259,7 +1288,10 @@ function switchTab(event, tabName) {
     document.getElementById(tabName).classList.add('active');
     event.target.classList.add('active');
 
-    if (tabName === 'inventory') loadInventoryDisplay();
+    if (tabName === 'inventory') {
+        ensureInventoryUnits();
+        loadInventoryDisplay();
+    }
     else if (tabName === 'reconciliation') loadEndOfDayData();
     else if (tabName === 'reports') updateReports();
     else if (tabName === 'expenses') loadRecentExpenses();
@@ -1744,6 +1776,7 @@ function deleteMenuItem(itemId) {
 
 // INVENTORY MANAGEMENT
 function loadInventoryItemsList() {
+    ensureInventoryUnits(); // Ensure all units are populated before display
     const container = document.getElementById('inventoryItemsList');
     if (!container) return;
     container.innerHTML = '';
