@@ -1194,6 +1194,26 @@ const DEFAULT_INVENTORY = {
 let menuItems = RemoteConfigManager.loadCachedOrDefault('MenuItems', DEFAULT_MENU_ITEMS);
 let inventory = RemoteConfigManager.loadCachedOrDefault('Inventory', DEFAULT_INVENTORY);
 
+// Normalize inventory keys to a stable hyphenated lowercase form so local
+// and remote keys don't create duplicate entries for the same item.
+function normalizeKey(name) {
+    if (!name) return '';
+    return name.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+}
+
+function normalizeInventoryObject(obj) {
+    const normalized = {};
+    Object.keys(obj || {}).forEach(k => {
+        const item = obj[k];
+        const keyFromName = normalizeKey(item.name || k);
+        normalized[keyFromName] = Object.assign({}, item);
+    });
+    return normalized;
+}
+
+// Ensure any cached inventory uses normalized keys immediately
+inventory = normalizeInventoryObject(inventory);
+
 let expenses = JSON.parse(localStorage.getItem('cobCornExpenses')) || [];
 let expenseCategories = JSON.parse(localStorage.getItem('cobCornExpenseCategories')) || ['Rent', 'Utilities', 'Supplies', 'Wages', 'Marketing', 'Other'];
 let eodReconciliation = JSON.parse(localStorage.getItem('cobCornEOD')) || [];
@@ -1466,11 +1486,14 @@ async function syncInventoryToBackend() {
     }
 
     try {
+        // Send a normalized copy so keys are stable on the server and we
+        // avoid creating duplicates due to differing local key formats.
+        const normalizedInventory = normalizeInventoryObject(inventory);
         const response = await fetch(CONFIG.googleAppsScriptURL, {
             method: 'POST',
             body: JSON.stringify({
                 action: 'saveInventory',
-                inventory: inventory
+                inventory: normalizedInventory
             }),
             mode: 'cors'
         });
@@ -1479,7 +1502,7 @@ async function syncInventoryToBackend() {
             const data = await response.json();
             if (data.success) {
                 console.log('✅ Inventory synced to Google Sheets');
-                RemoteConfigManager.saveCache({ Inventory: inventory });
+                RemoteConfigManager.saveCache({ Inventory: normalizedInventory });
                 return true;
             }
         }
@@ -1867,7 +1890,7 @@ function addInventoryItem() {
         return;
     }
 
-    const key = name.toLowerCase().replace(/\s+/g, '-');
+    const key = normalizeKey(name);
 
     if (inventory[key]) {
         showMessage('Item already exists', 'error');
