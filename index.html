@@ -461,6 +461,7 @@
                         <h3>💾 Offline & Sync</h3>
                         <button onclick="syncPendingToGoogle()" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">🔄 Sync Now (Upload Pending Data)</button>
                         <button onclick="rebuildInventoryFromServer()" style="background-color:#2196F3; color:white; padding:10px 20px; border:none; border-radius:4px; margin-left:8px;">♻️ Rebuild Inventory From Sheets</button>
+                        <button onclick="triggerDedupeInventorySheet()" style="background-color:#ff9800; color:white; padding:10px 20px; border:none; border-radius:4px; margin-left:8px;">🧹 Clean Inventory Sheet</button>
                         <p style="font-size: 12px; color: #666; margin-top: 10px;">All data is saved locally. Click above to sync with Google Sheets.</p>
                     </div>
                     <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
@@ -853,7 +854,13 @@ async function fetchInventoryFromGoogle() {
             remoteItem.openingStock = Number(remoteItem.openingStock) || 0;
             remoteItem.purchases = Number(remoteItem.purchases) || 0;
             remoteItem.consumedToday = Number(remoteItem.consumedToday) || 0;
-            remoteItem.totalStock = Number(remoteItem.totalStock) || 0;
+            // Server exposes the Closing Stock in the sheet's Closing column (H).
+            // Historically the client expected `totalStock` as a baseline, but the
+            // server writes computed closing into that column. To avoid double
+            // computation we map the received value to `closingStock`, and keep
+            // `totalStock` as the opening/baseline value so client formulas work.
+            remoteItem.closingStock = Number(remoteItem.totalStock) || 0;
+            remoteItem.totalStock = Number(remoteItem.openingStock) || 0;
             remoteItem.abnormalLoss = Number(remoteItem.abnormalLoss) || 0;
             remoteItem.unit = remoteItem.unit || '';
             
@@ -937,6 +944,39 @@ async function rebuildInventoryFromServer() {
     } catch (err) {
         console.warn('Rebuild failed:', err);
         showMessage('Rebuild failed: ' + (err && err.message), 'error');
+    }
+}
+
+// Trigger server-side dedupe helper (rewrites Inventory sheet). Then refresh local inventory.
+async function triggerDedupeInventorySheet() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        showMessage('No Google URL saved or offline', 'error');
+        return;
+    }
+
+    if (!confirm('This will clean and rewrite the Inventory sheet on Google Sheets. Continue?')) return;
+
+    try {
+        const resp = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'dedupeInventorySheet' }),
+            mode: 'cors'
+        });
+        if (!resp.ok) {
+            showMessage('Server request failed', 'error');
+            return;
+        }
+        const data = await resp.json();
+        if (!data.success) {
+            showMessage('Dedupe failed: ' + (data.error || 'unknown'), 'error');
+            return;
+        }
+        showMessage('✅ Inventory sheet cleaned on server', 'success');
+        // After server rewrite, refresh local inventory from server to be canonical
+        await rebuildInventoryFromServer();
+    } catch (err) {
+        console.warn('Dedupe error:', err);
+        showMessage('Dedupe failed: ' + (err && err.message), 'error');
     }
 }
 
@@ -1344,7 +1384,7 @@ function checkDailyReset() {
     if (lastDate && lastDate !== today) {
         Object.keys(inventory).forEach(key => {
             const item = inventory[key];
-            const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+            const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
             item.openingStock = closingStock;
             item.totalStock = closingStock;
             item.purchases = 0;
@@ -1985,7 +2025,7 @@ function loadInventoryDisplay() {
 
     container.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0));
+        const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
         const available = closingStock;
         const status = available <= item.minAlert ? '⚠️ LOW' : '✓ OK';
         const statusClass = available <= item.minAlert ? 'stock-alert' : 'stock-ok';
@@ -2052,7 +2092,7 @@ function updateInventorySummary() {
 
     listEl.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+        const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
         const chip = document.createElement('div');
         chip.style.cssText = 'background:#f1f1f1; padding:8px 10px; border-radius:6px; border:1px solid #ddd;';
         chip.innerHTML = `<strong style="display:block;">${item.name}</strong><small style="color:#555;">${closingStock} ${item.unit}</small>`;
