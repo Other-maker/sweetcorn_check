@@ -1896,7 +1896,7 @@ function loadInventoryDisplay() {
 
     container.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = item.totalStock + item.purchases - item.consumedToday - item.abnormalLoss;
+        const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0));
         const available = closingStock;
         const status = available <= item.minAlert ? '⚠️ LOW' : '✓ OK';
         const statusClass = available <= item.minAlert ? 'stock-alert' : 'stock-ok';
@@ -1987,6 +1987,9 @@ function addStock(invKey) {
     localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
     document.getElementById('addStock_' + invKey).value = '';
     loadInventoryDisplay();
+    // Persist to backend and cache
+    RemoteConfigManager.saveCache({ Inventory: inventory });
+    syncInventoryToBackend();
     showMessage(`✓ Added ${qty} ${inventory[invKey].unit}`, 'success');
 }
 
@@ -2003,6 +2006,8 @@ function recordLoss(invKey) {
     RemoteConfigManager.saveCache({ Inventory: inventory }); // ✅ Cache update
     document.getElementById('loss_' + invKey).value = '';
     loadInventoryDisplay();
+    // Persist to backend
+    syncInventoryToBackend();
     showMessage(`✓ Recorded loss: ${loss} ${inventory[invKey].unit}`, 'warning');
 }
 
@@ -2022,6 +2027,9 @@ function editTotalStock(invKey) {
     inventory[invKey].openingStock = qty;
     localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
     loadInventoryDisplay();
+    // Persist change
+    RemoteConfigManager.saveCache({ Inventory: inventory });
+    syncInventoryToBackend();
     showMessage(`✓ Stock updated to ${qty} ${inventory[invKey].unit}`, 'success');
 }
 
@@ -2048,6 +2056,9 @@ function deductInventory(order) {
 
     localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
     loadInventoryDisplay();
+    // Persist inventory change to backend immediately so all users see updated closing stock
+    RemoteConfigManager.saveCache({ Inventory: inventory });
+    syncInventoryToBackend();
 }
 
 // ORDER ENTRY
