@@ -273,7 +273,7 @@
 
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:20px;">
                 <button class="btn btn-primary" onclick="finalizeEOD()" style="padding:15px; font-size:16px;">✓ Finalize & Save to Sheets</button>
-                <button class="btn" style="background:#f77f00; color:white; padding:15px; font-size:16px;" onclick="saveEODSnapshotNow()">💾 Save Inventory Snapshot</button>
+                <!-- Save Inventory Snapshot removed per request -->
                 <button class="btn" style="background:#2196F3; color:white; padding:15px; font-size:16px;" onclick="alert('Download feature coming soon')">📥 Download Report</button>
             </div>
         </div>
@@ -460,6 +460,7 @@
                     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
                         <h3>💾 Offline & Sync</h3>
                         <button onclick="syncPendingToGoogle()" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">🔄 Sync Now (Upload Pending Data)</button>
+                        <button onclick="rebuildInventoryFromServer()" style="background-color:#2196F3; color:white; padding:10px 20px; border:none; border-radius:4px; margin-left:8px;">♻️ Rebuild Inventory From Sheets</button>
                         <p style="font-size: 12px; color: #666; margin-top: 10px;">All data is saved locally. Click above to sync with Google Sheets.</p>
                     </div>
                     <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
@@ -894,6 +895,48 @@ async function fetchInventoryFromGoogle() {
         }
     } catch (error) {
         console.warn('⚠️ Error fetching inventory:', error.message);
+    }
+}
+
+// Force-replace local inventory with server copy (Sheets as canonical source)
+async function rebuildInventoryFromServer() {
+    if (!CONFIG.googleAppsScriptURL || !navigator.onLine) {
+        showMessage('No Google URL saved or offline', 'error');
+        return;
+    }
+
+    if (!confirm('This will overwrite local inventory with the Inventory from Google Sheets. Continue?')) return;
+
+    try {
+        const response = await fetch(CONFIG.googleAppsScriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getInventory' }),
+            mode: 'cors'
+        });
+
+        if (!response.ok) {
+            showMessage('Failed to fetch inventory from Sheets', 'error');
+            return;
+        }
+
+        const data = await response.json();
+        if (!data.success || !data.inventory) {
+            showMessage('Sheets returned no inventory', 'error');
+            return;
+        }
+
+        // Replace local inventory entirely with normalized server copy
+        const serverInv = normalizeInventoryObject(data.inventory);
+        inventory = serverInv;
+        RemoteConfigManager.saveCache({ Inventory: inventory });
+        localStorage.setItem('cobCornInventory', JSON.stringify(inventory));
+        ensureInventoryUnits();
+        loadInventoryDisplay();
+        updateInventorySummary();
+        showMessage('✅ Inventory rebuilt from Sheets (Sheets are now canonical)', 'success');
+    } catch (err) {
+        console.warn('Rebuild failed:', err);
+        showMessage('Rebuild failed: ' + (err && err.message), 'error');
     }
 }
 
