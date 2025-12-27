@@ -781,16 +781,29 @@ async function fetchExpensesFromGoogle() {
         let newExpensesFound = false;
 
         googleExpenses.forEach(googleExp => {
-            // Check if expense already exists locally
-            const exists = expenses.find(e => e.id === googleExp.id || 
-                (e.date === googleExp.date && e.amount === googleExp.amount && e.category === googleExp.category));
+            // Check if expense already exists locally by ID (preferred) or by exact match
+            let exists = false;
+            
+            // First try to match by stable ID
+            if (googleExp.id) {
+                exists = expenses.some(e => e.id === googleExp.id);
+            }
+            
+            // If no ID match, do a detailed match to catch duplicates
+            if (!exists) {
+                exists = expenses.some(e => 
+                    e.date === googleExp.date && 
+                    e.category === googleExp.category && 
+                    Number(e.amount) === Number(googleExp.amount)
+                );
+            }
             
             if (!exists) {
                 expenses.push({
-                    id: googleExp.id || 'EXP' + Date.now(),
+                    id: googleExp.id || ('EXP' + Date.now() + Math.random()),
                     date: googleExp.date,
                     category: googleExp.category,
-                    amount: googleExp.amount,
+                    amount: Number(googleExp.amount) || 0,
                     description: googleExp.description || '',
                     paymentMethod: googleExp.paymentMethod || 'cash',
                     timestamp: googleExp.timestamp || new Date().toISOString()
@@ -833,13 +846,23 @@ async function fetchInventoryFromGoogle() {
 
         // Merge remote inventory with local inventory (preserve today's consumption)
         Object.keys(googleInventory).forEach(key => {
+            const remoteItem = googleInventory[key];
+            
+            // Ensure all numeric fields are properly coerced
+            remoteItem.openingStock = Number(remoteItem.openingStock) || 0;
+            remoteItem.purchases = Number(remoteItem.purchases) || 0;
+            remoteItem.consumedToday = Number(remoteItem.consumedToday) || 0;
+            remoteItem.totalStock = Number(remoteItem.totalStock) || 0;
+            remoteItem.abnormalLoss = Number(remoteItem.abnormalLoss) || 0;
+            remoteItem.unit = remoteItem.unit || '';
+            
             if (inventory[key]) {
                 // Keep local consumption data, update everything else
-                const localConsumption = inventory[key].consumedToday || 0;
-                const localPurchases = inventory[key].purchases || 0;
-                const localLoss = inventory[key].abnormalLoss || 0;
+                const localConsumption = Number(inventory[key].consumedToday) || 0;
+                const localPurchases = Number(inventory[key].purchases) || 0;
+                const localLoss = Number(inventory[key].abnormalLoss) || 0;
 
-                inventory[key] = googleInventory[key];
+                inventory[key] = remoteItem;
                 inventory[key].consumedToday = localConsumption;
                 inventory[key].purchases = localPurchases;
                 inventory[key].abnormalLoss = localLoss;
@@ -851,7 +874,7 @@ async function fetchInventoryFromGoogle() {
                 
                 inventoryChanged = true;
             } else {
-                inventory[key] = googleInventory[key];
+                inventory[key] = remoteItem;
                 
                 // Ensure unit field is populated from defaults if missing
                 if (!inventory[key].unit && DEFAULT_INVENTORY[key]) {
@@ -2706,11 +2729,17 @@ function loadRecentExpenses() {
 
     container.innerHTML = '';
     recent.forEach(exp => {
+        // Format date: extract just YYYY-MM-DD part if it contains timestamp
+        let displayDate = exp.date;
+        if (displayDate && displayDate.includes('T')) {
+            displayDate = displayDate.split('T')[0]; // Remove time part
+        }
+        
         container.innerHTML += `
             <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:8px;">${exp.date}</td>
+                <td style="padding:8px;">${displayDate}</td>
                 <td style="padding:8px;">${exp.category}</td>
-                <td style="padding:8px;">₹${exp.amount.toFixed(2)}</td>
+                <td style="padding:8px;">₹${Number(exp.amount || 0).toFixed(2)}</td>
                 <td style="padding:8px;">${exp.paymentMethod.toUpperCase()}</td>
             </tr>
         `;
