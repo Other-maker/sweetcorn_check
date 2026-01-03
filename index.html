@@ -110,10 +110,6 @@
                     <div class="form-group">
                         <label>Quantity</label>
                         <input type="number" id="quantity" value="1" min="1">
-                         <div class="form-group">
-  <label>Discount (₹)</label>
-  <input type="number" id="discount" value="0" min="0" step="10">
- </div>
                     </div>
                     <div class="form-group">
                         <label>Customer Name (Optional)</label>
@@ -2197,18 +2193,14 @@ function deductInventory(order) {
 // ORDER ENTRY
 function quickAddItem(itemName, price, itemId) {
     const qty = parseInt(document.getElementById('quantity').value) || 1;
-     const discount = parseFloat(document.getElementById('discount').value) || 0;
-     const baseTotal = price * qty;
-  const finalTotal = baseTotal - discount;
     currentOrder.items.push({
         id: Date.now(),
         itemId: itemId,
         name: itemName,
         price: price,
         quantity: qty,
-    total: finalTotal,
-    discount: discount,
-    baseTotal: baseTotal    });
+        total: price * qty
+    });
     updateOrderDisplay();
     document.getElementById('quantity').value = 1;
 }
@@ -2244,19 +2236,11 @@ function updateOrderDisplay() {
     updateTotals();
 }
 
-2254
-    (idx, qty) {
+function updateItemQuantity(idx, qty) {
     const q = parseInt(qty) || 1;
     currentOrder.items[idx].quantity = q;
-    currentOrder.items[idx].baseTotal = currentOrder.items[idx].price * q;
-    currentOrder.items[idx].total = currentOrder.items[idx].baseTotal - (currentOrder.items[idx].discount || 0);    updateOrderDisplay();
-}
-        // ✅ ADD THIS NEW FUNCTION
-function updateItemDiscount(idx, discountAmount) {
-  const discount = parseFloat(discountAmount) || 0;
-  currentOrder.items[idx].discount = discount;
-  currentOrder.items[idx].total = currentOrder.items[idx].baseTotal - discount;
-  updateOrderDisplay();
+    currentOrder.items[idx].total = currentOrder.items[idx].price * q;
+    updateOrderDisplay();
 }
 
 function removeItem(idx) {
@@ -2409,8 +2393,7 @@ async function sendOrderToGoogle(order) {
     loadPendingOrdersInline();
 }
 */
-2420
-    () {
+function resetForm() {
     currentOrder = {
         items: [], total: 0, payment: 'upi', paymentReceived: false,
         status: 'pending', customerName: '', specialNotes: ''
@@ -2418,7 +2401,6 @@ async function sendOrderToGoogle(order) {
 
     document.getElementById('itemSelect').value = '';
     document.getElementById('quantity').value = 1;
-     document.getElementById('discount').value = 0;
     document.getElementById('customerName').value = '';
     document.getElementById('specialNotes').value = '';
     document.getElementById('upi').checked = true;
