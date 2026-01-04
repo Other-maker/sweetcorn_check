@@ -1,3 +1,4 @@
+2828
 
 
 <!DOCTYPE html>
@@ -859,7 +860,7 @@ async function fetchInventoryFromGoogle() {
             // server writes computed closing into that column. To avoid double
             // computation we map the received value to `closingStock`, and keep
             // `totalStock` as the opening/baseline value so client formulas work.
-            remoteItem.closingStock = Number(remoteItem.totalStock) || 0;
+//             remoteItem.closingStock = Number(remoteItem.totalStock) || 0;
             remoteItem.totalStock = Number(remoteItem.openingStock) || 0;
             remoteItem.abnormalLoss = Number(remoteItem.abnormalLoss) || 0;
             remoteItem.unit = remoteItem.unit || '';
@@ -1384,7 +1385,7 @@ function checkDailyReset() {
     if (lastDate && lastDate !== today) {
         Object.keys(inventory).forEach(key => {
             const item = inventory[key];
-            const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
+            const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
             item.openingStock = closingStock;
             item.totalStock = closingStock;
             item.purchases = 0;
@@ -2025,7 +2026,7 @@ function loadInventoryDisplay() {
 
     container.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
+        const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
         const available = closingStock;
         const status = available <= item.minAlert ? '⚠️ LOW' : '✓ OK';
         const statusClass = available <= item.minAlert ? 'stock-alert' : 'stock-ok';
@@ -2085,14 +2086,16 @@ function loadInventoryDisplay() {
 }
 
 // Render a compact inventory summary with current closing quantities
-function updateInventorySummary() {
+2828
+    () {
     const summaryEl = document.getElementById('inventorySummary');
     const listEl = document.getElementById('inventorySummaryList');
     if (!summaryEl || !listEl) return;
 
     listEl.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = (typeof item.closingStock !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
+        const closingStock = (2828
+                              !== 'undefined' ? Number(item.closingStock) : (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
         const chip = document.createElement('div');
         chip.style.cssText = 'background:#f1f1f1; padding:8px 10px; border-radius:6px; border:1px solid #ddd;';
         chip.innerHTML = `<strong style="display:block;">${item.name}</strong><small style="color:#555;">${closingStock} ${item.unit}</small>`;
