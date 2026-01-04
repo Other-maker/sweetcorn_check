@@ -1384,8 +1384,7 @@ function checkDailyReset() {
     if (lastDate && lastDate !== today) {
         Object.keys(inventory).forEach(key => {
             const item = inventory[key];
-            const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
-            item.openingStock = closingStock;
+const closingStock = Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0);            item.openingStock = closingStock;
             item.totalStock = closingStock;
             item.purchases = 0;
             item.consumedToday = 0;
