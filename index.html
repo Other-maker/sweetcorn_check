@@ -2024,7 +2024,7 @@ function loadInventoryDisplay() {
 
     container.innerHTML = '';
     Object.entries(inventory).forEach(([key, item]) => {
-        const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0)));
+        const closingStock = (Number(item.totalStock || item.openingStock || 0) + Number(item.purchases || 0) - Number(item.consumedToday || 0) - Number(item.abnormalLoss || 0));
         const available = closingStock;
         const status = available <= item.minAlert ? '⚠️ LOW' : '✓ OK';
         const statusClass = available <= item.minAlert ? 'stock-alert' : 'stock-ok';
